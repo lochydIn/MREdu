@@ -26,11 +26,34 @@ FetchContent_Declare(imgui
 
 FetchContent_MakeAvailable(glm glfw imgui)
 
-add_executable(MREdu main.cpp imgui_impl_glfw.cpp imgui_impl_opengl3.cpp)
+add_executable(MREdu src/main.cpp
+        src/modelling/core/ModelObject.cpp
+        src/modelling/core/ModelObject.h
+        src/modelling/core/Scene.cpp
+        src/modelling/core/Scene.h
+        src/modelling/components/Component.h
+        src/modelling/core/SceneManager.cpp
+        src/modelling/core/SceneManager.h
+        src/rendering/Camera.h
+        src/modelling/components/Transform.h
+        src/rendering/Ray.h)
 
-link_libraries(MREdu
+set(IMGUI_SOURCES
+        $(imgui_SOURCE_DIR)/imgui.cpp
+        $(imgui_SOURCE_DIR)/imgui.draw.cpp
+        $(imgui_SOURCE_DIR)/imgui_tables.cpp
+        $(imgui_SOURCE_DIR)/imgui_widgets.cpp
+        $(imgui_SOURCE_DIR)/backends/imgui_impl_glfw.cpp
+        $(imgui_SOURCE_DIR)/backends/imgui_impl_opengl3.cpp
+)
+
+target_include_directories(MREdu PRIVATE
+        ${imgui_SOURCE_DIR}
+        ${imgui_SOURCE_DIR}/backends
+)
+
+target_link_libraries(MREdu PRIVATE
         OpenGL::GL
-        glm
         glfw
-        imgui
+        glm
 )
