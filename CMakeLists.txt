@@ -36,7 +36,10 @@ add_executable(MREdu src/main.cpp
         src/modelling/core/SceneManager.h
         src/rendering/Camera.h
         src/modelling/components/Transform.h
-        src/rendering/Ray.h)
+        src/rendering/Ray.h
+        src/modelling/components/Sphere.h
+        src/modelling/components/Sphere.h
+        src/rendering/Intersection.h)
 
 set(IMGUI_SOURCES
         $(imgui_SOURCE_DIR)/imgui.cpp

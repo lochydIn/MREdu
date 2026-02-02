@@ -5,10 +5,6 @@
 #include "../modelling/components/Component.h"
 #include "glm/vec3.hpp"
 #include "glm/ext/matrix_transform.hpp"
-#include "glm/gtx/component_wise.inl"
-#include "glm/gtx/io.hpp"
-#include "glm/gtx/matrix_decompose.inl"
-
 
 class Camera {
 public:
@@ -22,6 +18,8 @@ public:
         :
         fov(m_fov),
         aspect(m_width / m_height),
+        height(m_height),
+        width(m_width),
         scale(tan(glm::radians(fov * 0.5f))),
         position(m_position),
         target(m_target) {}
@@ -36,13 +34,17 @@ public:
         return glm::lookAt(position,target,glm::vec3(0.0f,1.0f,0.0f));
     }
     // Get the ray from the camera's position to the given pixel u,v.
-    Ray getRay(const float& u, const float& v) const {
+    Ray getRay(const int& px, const int& py) const {
+
+        float u = (2.0f * px / width) - 1.0f;
+        float v = -(2.0f * py / height) + 1.0f;
+
         const glm::vec3 forward = glm::normalize(target - position);
-        const glm::vec3 right = glm::normalize(glm::cross(glm::vec3(0.0f,1.0f,0.0f), forward));
-        const glm::vec3 up = glm:: normalize(glm::cross(forward,right));
+        const glm::vec3 right = glm::vec3(1.0f,0.0f,0.0f);
+        const glm::vec3 up = glm::vec3(0.0f,1.0f,0.0f);
 
-        glm::vec3 rayDirection = glm::normalize(forward + (u * aspect * scale * right) + (v * scale * up) - position);
-
+        //glm::vec3 rayDirection = glm::normalize(forward + (u * scale * right) + (v * scale * up));
+        glm::vec3 rayDirection = glm::normalize(forward + (u * scale * aspect * right) + (v * scale * up));
         return Ray(position,rayDirection);
     }
 
@@ -75,6 +77,8 @@ private:
     float fov;
     float aspect;
     float scale;
+    float width;
+    float height;
     glm::vec3 position;
     glm::vec3 target;
 };
