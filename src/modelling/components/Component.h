@@ -9,9 +9,7 @@
 class Component {
     public:
     // Constructor
-    Component(const std::string& name) {
-                m_name = name;
-            }
+    Component() = default;
 
     virtual ~Component() = default;
 
@@ -21,10 +19,6 @@ class Component {
     {
         return false;
     }
-
-    private:
-        std::string m_name;
-
 };
 
 
