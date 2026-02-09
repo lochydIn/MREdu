@@ -3,13 +3,17 @@
 //
 
 #pragma once
-#include "../../rendering/Intersection.h"
 #include "../../rendering/Ray.h"
+
+struct Intersection;
 
 class Component {
     public:
     // Constructor
     Component() = default;
+
+    Component(const Component&) = default;
+    Component& operator=(const Component&) = default;
 
     virtual ~Component() = default;
 

@@ -4,8 +4,8 @@
 
 #pragma once
 #include <glm/glm.hpp>
-
 #include "Ray.h"
+#include "../modelling/core/Entity.h"
 
 struct Intersection
 {
@@ -13,6 +13,7 @@ struct Intersection
     glm::vec3 normal; // Surface Normal
     bool frontSurface;
     float distance = -1.0f; // The distance along the ray that the hit occurs.
+    Entity* entity; // The entity being hit.
 
     void setFrontSurface(const Ray& ray, const glm::vec3& outwardNormal)
     {

@@ -27,23 +27,25 @@ FetchContent_Declare(imgui
 FetchContent_MakeAvailable(glm glfw imgui)
 
 add_executable(MREdu src/main.cpp
-        src/modelling/core/ModelObject.cpp
-        src/modelling/core/ModelObject.h
-        src/modelling/core/Scene.cpp
-        src/modelling/core/Scene.h
+        src/modelling/core/Entity.h
         src/modelling/components/Component.h
-        src/modelling/core/SceneManager.cpp
-        src/modelling/core/SceneManager.h
-        src/rendering/Camera.h
+        src/modelling/core/Scene.h
+        src/modelling/core/Camera.h
         src/modelling/components/Transform.h
         src/rendering/Ray.h
-        src/modelling/components/Sphere.h
-        src/modelling/components/Sphere.h
         src/rendering/Intersection.h
         src/modelling/components/Material.h
-        src/rendering/DirLight.h
+        src/modelling/core/lighting/DirectionalLight.h
         src/rendering/Shader.h
-        src/rendering/Shader.cpp)
+        src/rendering/Shader.cpp
+        src/rendering/RayTracer.cpp
+        src/rendering/RayTracer.h
+        src/modelling/core/primatives/Sphere.h
+        src/modelling/core/primatives/plane.h
+        src/modelling/core/primatives/cone.h
+        src/modelling/core/primatives/cylinder.h
+        src/modelling/core/lighting/pointLight.h
+        src/modelling/core/lighting/Light.h)
 
 set(IMGUI_SOURCES
         $(imgui_SOURCE_DIR)/imgui.cpp
@@ -64,3 +66,4 @@ target_link_libraries(MREdu PRIVATE
         glfw
         glm
 )
+add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
