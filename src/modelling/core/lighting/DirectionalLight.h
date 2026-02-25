@@ -7,34 +7,36 @@
 #include "glm/vec3.hpp"
 
 class DirectionalLight : public Light {
-public:
+    public:
 
-    DirectionalLight(const glm::vec3& direction,
-        const glm::vec3& colour, float intensity)
-    : direction (glm::normalize(direction)), colour(colour), intensity(intensity) {}
+        DirectionalLight(const glm::vec3& direction,
+            const glm::vec3& colour, float intensity, float angle)
+        : direction (glm::normalize(direction)), colour(colour), brightness(intensity), angle(angle) {}
 
-    ~DirectionalLight() override = default;
+        ~DirectionalLight() override = default;
+        DirectionalLight(DirectionalLight&&) = delete;
+        DirectionalLight& operator = (DirectionalLight&&) = delete;
 
-    DirectionalLight(DirectionalLight&&) = delete;
+        [[nodiscard]] glm::vec3 getDirection() const {
+            return -direction;
+        }
+        [[nodiscard]] glm::vec3 getColour() const override {
+            return colour * brightness;
+        }
 
-    DirectionalLight& operator = (DirectionalLight&&) = delete;
+        [[nodiscard]] float getAngle() const {
+            return angle;
+        }
 
-    [[nodiscard]] glm::vec3 getDirection(const glm::vec3& point) const override {
-        return -direction;
-    }
-    [[nodiscard]] glm::vec3 getColour() const override {
-        return colour;
-    }
-    [[nodiscard]] float getIntensity() const override {
-        return intensity;
-    }
+        static float getDistance() {
+            return FLT_MAX; //Light is infinitely far away.
+        }
 
-    [[nodiscard]] float getDistance(const glm::vec3& point) const override {
-        return FLT_MAX; //Light is infinitely far away.
-    }
 
-private:
-    glm::vec3 direction;
-    glm::vec3 colour;
-    float intensity;
+
+    private:
+        glm::vec3 direction;
+        glm::vec3 colour;
+        float brightness;
+        float angle;
 };

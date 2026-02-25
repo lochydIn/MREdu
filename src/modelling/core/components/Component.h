@@ -3,9 +3,9 @@
 //
 
 #pragma once
-#include "../../rendering/Ray.h"
 
 struct Intersection;
+struct Ray;
 
 class Component {
     public:

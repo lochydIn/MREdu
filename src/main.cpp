@@ -1,88 +1,373 @@
+#include <chrono>
 #include <iostream>
-
+#include <random>
+#include <vector>
+#include <glad/glad.h>
 #include "../cmake-build-debug/_deps/glfw-src/include/GLFW/glfw3.h"
-#include "modelling/components/Material.h"
-#include "modelling/core/primatives/Sphere.h"
-#include "modelling/core/Camera.h"
-#include "modelling/core/lighting/DirectionalLight.h"
 #include "modelling/core/Scene.h"
-#include "modelling/core/lighting/PointLight.h"
-#include "rendering/RayTracer.h"
-#include "rendering/Shader.h"
+#include "modelling/core/Camera.h"
+#include "modelling/core/primatives/Sphere.h"
 #include "modelling/core/primatives/Plane.h"
+#include "modelling/core/lighting/DirectionalLight.h"
+#include "modelling/core/lighting/PointLight.h"
+#include "modelling/core/components/Material.h"
+#include "modelling/core/lighting/RectangleLight.h"
+#include "modelling/core/primatives/Cuboid.h"
+#include "modelling/core/primatives/Sphere.h"
+#include "rendering/structs/RenderParams.h"
+#include "rendering/RayTracer.h"
 
 
-int main(int argc, char* argv[])
-{
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
+}
+
+// Simple vertex shader - just draws a fullscreen rectangle
+const char* vertexShaderSource = R"(
+#version 460 core
+layout(location = 0) in vec2 aPos;  // Input: vertex position
+out vec2 TexCoord;                   // Output: texture coordinate
+void main() {
+    gl_Position = vec4(aPos, 0.0, 1.0);  // Position as is
+    TexCoord = aPos * 0.5 + 0.5;          // Convert -1 to 1 range to 0 to 1
+}
+)";
+
+// Simple fragment shader - just shows the texture
+const char* fragmentShaderSource = R"(
+#version 460 core
+in vec2 TexCoord;                      // Input: texture coord from vertex shader
+out vec4 FragColor;                     // Output: final color
+uniform sampler2D screenTexture;        // The texture containing our ray traced image
+void main() {
+    FragColor = texture(screenTexture, vec2(TexCoord.x, 1.0 - TexCoord.y));  // Sample texture at this coordinate
+}
+)";
+
+// Helper function to check shader compilation
+bool checkShaderCompile(GLuint shader, const char* name) {
+    int success;
+    char infoLog[512];
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(shader, 512, NULL, infoLog);
+        std::cout << "Shader compilation failed (" << name << "): " << infoLog << std::endl;
+        return false;
+    }
+    return true;
+}
+
+
+int main(int argc, char* argv[]) {
     // Setting up a simple viewport to test primitives and components.
     glfwInit();
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
     GLFWwindow* window = glfwCreateWindow(960, 720, "Viewport", nullptr, nullptr);
+
+    if (window == nullptr) {
+        std::cout << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
     glfwMakeContextCurrent(window);
 
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cout << "Failed to initialize GLAD" << std::endl;
+        return -1;
+    }
+
+    glViewport(0, 0, 960, 720);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    // Scene Test Setup
     Scene scene;
 
-    auto redMaterial = std::make_shared<Material>(glm::vec3(1,0,0),0.0f,0.0f,0.3f);
-    auto greenMaterial = std::make_shared<Material>(glm::vec3(0,1,0),0.0f,0.0f,0.3f);
-    auto blueMaterial = std::make_shared<Material>(glm::vec3(0,0,1),0.0f,0.0f,0.3f);
-    auto mirrorMaterial = std::make_shared<Material>(glm::vec3(1,1,1),0.0f,1.0f,0.8f);
-    auto floorMat = std::make_shared<Material>(glm::vec3(0.8),0.5f,0.0f,0.1f);
+    auto whiteMat = std::make_shared<Material>(
+    glm::vec3(0.8f, 0.8f, 0.8f),  // colour
+    0.5f,                          // roughness
+    0.0f,                          // metallic
+    0.0f,                          // reflectivity
+    0.0f, 0.0f, glm::vec3(0.0f)
+);
 
-    auto* redSphere = new Sphere(1.0f, glm::vec3 (-2.5, 0.0f, -5.0f),redMaterial);
-    auto* greenSphere = new Sphere(1.0f, glm::vec3 (0.0f, 0.0f, -6.0f),greenMaterial);
-    auto* blueSphere = new Sphere(1.0f, glm::vec3 (2.5f, 0.0f, -7.0f),blueMaterial);
+    // Red diffuse for right wall
+    auto redMat = std::make_shared<Material>(
+        glm::vec3(0.8f, 0.1f, 0.1f),   // colour
+        0.5f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
+    );
 
-    auto* mirrorSphere = new Sphere(2, glm::vec3(0.0f,2.0f,-9.0f),mirrorMaterial);
+    // Green diffuse for left wall
+    auto blueMat = std::make_shared<Material>(
+        glm::vec3(0.294f, 0.663f, 0.784f),   // colour
+        0.5f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
+    );
 
-    auto* floor = new Plane(glm::vec3(0,-2,0),glm::vec3(0,1,0), floorMat);
+    // White diffuse for ceiling
+    auto ceilingMat = std::make_shared<Material>(
+        glm::vec3(0.8f, 0.8f, 0.8f), 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
+    );
 
+    // White diffuse for floor
+    auto floorMat = std::make_shared<Material>(
+        glm::vec3(0.8f, 0.8f, 0.8f), 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
+    );
 
-    scene.addEntity(redSphere);
-    scene.addEntity(greenSphere);
-    scene.addEntity(blueSphere);
-    scene.addEntity(mirrorSphere);
+    // Materials for the boxes
+    auto box1Mat = std::make_shared<Material>(
+        glm::vec3(0.38f, 0.78f, 0.384),  // Green box
+        0.4f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
+    );
+
+    auto box2Mat = std::make_shared<Material>(
+        glm::vec3(0.9f, 0.9f, 0.9f),  // white box
+        0.4f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
+    );
+
+    // Optional: Add a glass sphere or metal sphere for variety
+    auto glassMat = std::make_shared<Material>(
+        glm::vec3(1.0f), 0.0f, 0.0f, 0.0f, 1.5f, 1.0f, glm::vec3(0.0f)
+    );
+
+    auto goldMat = std::make_shared<Material>(
+        glm::vec3(1.0f, 0.8f, 0.3f), 0.1f, 1.0f, 0.9f, 0.0f, 0.0f, glm::vec3(0.0f)
+    );
+
+    auto floor = new Plane(glm::vec3(0, 0, 0), glm::vec3(0, 1, 0), floorMat);
     scene.addEntity(floor);
 
-    scene.addLight(new DirectionalLight(
-        glm::vec3(0,-1,0),
-        glm::vec3(1,1,1),
-        1.0f));
+    // Ceiling (at y=6)
+    auto ceiling = new Plane(glm::vec3(0, 6, 0), glm::vec3(0, -1, 0), ceilingMat);
+    scene.addEntity(ceiling);
+
+    // Back wall (at z=-8)
+    auto backWall = new Plane(glm::vec3(0, 3, -8), glm::vec3(0, 0, 1), whiteMat);
+    scene.addEntity(backWall);
+
+    // Left wall (at x=-5) - GREEN
+    auto leftWall = new Plane(glm::vec3(-3, 3, -4), glm::vec3(1, 0, 0), redMat);
+    scene.addEntity(leftWall);
+
+    // Right wall (at x=5) - RED
+    auto rightWall = new Plane(glm::vec3(3, 3, -4), glm::vec3(-1, 0, 0), blueMat);
+    scene.addEntity(rightWall);
+
+    auto reflectiveSphere = new Sphere(1.0f,glm::vec3(1.2f, 1.0f, -1.0f),goldMat);
+
+    // Tall box on left
+    auto tallBox = new Cuboid(
+        glm::vec3(1.2f, 1.5f, -1.0f),           // position
+        glm::vec3(-1.0f, -1.5f, -1.0f),          // min
+        glm::vec3(1.0f, 1.5f, 1.0f),             // max (3 units tall)
+        box2Mat
+    );
+    //scene.addEntity(tallBox);
+    scene.addEntity(reflectiveSphere);
 
 
-    Camera camera (glm::vec3(0,1,0),glm::vec3(0,0,-5));
+    // Short box on right
+    auto shortBox = new Cuboid(
+        glm::vec3(-1.3f, 1.0f, -0.5f),            // position
+        glm::vec3(-1.0f, -1.0f, -1.0f),          // min
+        glm::vec3(1.0f, 1.0f, 1.0f),             // max (2 units tall)
+        box1Mat
+    );
+    scene.addEntity(shortBox);
 
-    auto tracer = RayTracer();
+    auto ceilingLight = RectangleLight(
+    glm::vec3(0.0f, 5.93f, -0.25f),            // center (just below ceiling)
+    glm::vec3(1.0f, 0.0f, 0.0f),              // uAxis (width)
+    glm::vec3(0.0f, 0.0f, 1.0f),              // vAxis (depth)
+    glm::vec3(1.0f, 0.95f, 0.9f),             // warm white
+    1.0f);
 
+    scene.addLight(&ceilingLight);
+
+    // Material for the visible light source (emissive)
+    auto lightMaterial = std::make_shared<Material>(
+        glm::vec3(1.0f, 1.0f, 1.0f), // Base colour (white)
+        0.0f,                         // roughness (doesn't matter much)
+        0.0f,                         // metallic
+        0.0f,                         // reflectivity
+        1.0f,                         // iOR (doesn't matter)
+        0.0f,                         // transparency
+        glm::vec3(0.0f)               // attenuation
+    );
+    lightMaterial->emissive = glm::vec3(10.0f); // Make it glow white!
+
+    // The VISIBLE white rectangle (a thin box)
+    glm::vec3 lightPos(0.0f, 5.999f, -0.25f);
+    glm::vec3 lightHalfSize(1.0f, 0.0001f, 1.0f); // Very thin in Y direction
+
+    auto visibleLight = new Cuboid(
+        lightPos,                         // position
+        -lightHalfSize,                   // min
+        lightHalfSize,                    // max
+        lightMaterial                     // Emissive material
+    );
+    scene.addEntity(visibleLight);
+
+    Camera camera(
+        glm::vec3(0.0f, 2.5f, 8.0f),            // position (looking into box)
+        glm::vec3(0.0f, 2.5f, -4.0f)              // look at center of box
+    );
+
+    // Render Setup
+    RenderParams renderParams;
+
+    // Quality Settings. (Anti-Aliasing)
+    renderParams.primarySamples = 16;
+    renderParams.reflectionSamples = 16;
+    renderParams.shadowSamples = 32;
+    renderParams.maxDepth = 5;
+
+    // Shadow Settings
+    renderParams.softShadows = true;
+    renderParams.shadowBias = 0.0001f;
+    renderParams.shadowHaltonBases = {5,7};
+
+    // Russian Roulette Settings
+    renderParams.russianRoulette = true;
+    renderParams.russianRoulFactor = 0.5f;
+    renderParams.russianRouletteStartDepth = 3;
+
+    // Performance / Quality
+    renderParams.reduceSamplesWithDepth = true;
+    renderParams.jitter = 1.0f;
+
+    //Technical Settings
+    renderParams.backgroundColor = glm::vec3(0.3f, 0.3f, 0.6f);
+    renderParams.haltonBases = {2,3};
+
+    scene.buildBVH();
+
+    //OpenGL Texture Setup
+    GLuint texture;
+    // Container to store image in GPU.
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    // Texture Params
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, 960, 720, 0, GL_RGB, GL_FLOAT, nullptr);
+
+    // Fullscreen Quad
+    float vertices[] = {
+        // positions (x, y)
+        -1.0f, -1.0f,  // bottom left
+         1.0f, -1.0f,  // bottom right
+        -1.0f,  1.0f,  // top left
+         1.0f,  1.0f   // top right
+    };
+
+    unsigned int indices[] = {
+        0, 1, 2,  // first triangle (bottom left, bottom right, top left)
+        1, 3, 2   // second triangle (bottom right, top right, top left)
+    };
+
+    // VAO and buffers
+    GLuint VAO, VBO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    //Vertex attribute (just position)
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), static_cast<void*>(nullptr));
+    glEnableVertexAttribArray(0);
+
+
+    // Create and compile vertex shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+    glCompileShader(vertexShader);
+    if (!checkShaderCompile(vertexShader, "vertex shader")) return -1;
+
+    // Create and compile fragment shader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+    if (!checkShaderCompile(fragmentShader, "fragment shader")) return -1;
+
+    // Link shaders into a program
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    // Check linking
+    int success;
+    char infoLog[512];
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cout << "Shader linking failed: " << infoLog << std::endl;
+        return -1;
+    }
+
+    // Clean up shaders.
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    // Prep Pixel Buffer.
+    std::vector<glm::vec3> pixels(960 * 720);
+
+    auto startTime = std::chrono::high_resolution_clock::now();
+
+    for (int y = 0; y < 720; y++) {
+        for (int x = 0; x < 960; x++) {
+            glm::vec3 colour = RayTracer::tracePixelHalton(scene, camera,
+                static_cast<float>(x), static_cast<float>(y), renderParams);
+            pixels[y * 960 + x] = colour;
+        }
+        if (y % 72 == 0)
+        {
+            std::cout << "Progress: " << (y * 100 / 720) << "%" << std::endl;
+        }
+    }
+
+
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration_sec = std::chrono::duration<double>(endTime - startTime);
+    std::cout << "Rendering complete! Time: " << duration_sec.count() << " seconds" << std::endl;
+
+    // Upload the final image to GPU texture
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 960, 720,
+                    GL_RGB, GL_FLOAT, pixels.data());
+
+    // Render Loop.
     while (!glfwWindowShouldClose(window)) {
-        glClearColor(0,0,0,1);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glOrtho(-1,1,-1,1,-1,1);
+        // Draw the quad with our pre-rendered texture
+        glUseProgram(shaderProgram);
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-
-        glBegin(GL_POINTS);
-
-        for (int y = 0; y < 720; y++) {
-            for (int x = 0; x < 960; x++) {
-
-                // Convert to normalized coordinates
-                float nx = (2.0f * x / 960.0f) - 1.0f;
-                float ny = 1.0f - (2.0f * y / 720.0f);
-
-                Ray ray = camera.getRay(x, y);
-                glm::vec3 colour;
-                colour = tracer.trace(scene,ray,0);
-                glColor3f (colour.r, colour.g, colour.b);
-
-                glVertex2f(nx, ny);
-            }
-        }
-        glEnd();
+        // Swap buffers and poll events (this will be fast now!)
         glfwSwapBuffers(window);
+        glfwPollEvents();
     }
+
+    // Cleanup
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+    glDeleteTextures(1, &texture);
+    glDeleteProgram(shaderProgram);
 
     glfwDestroyWindow(window);
     glfwTerminate();

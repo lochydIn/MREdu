@@ -4,9 +4,11 @@
 
 #pragma once
 #include "lighting/DirectionalLight.h"
-#include "../../rendering/Intersection.h"
+#include "../../rendering/structs/Intersection.h"
 #include "Entity.h"
+#include "BVH.h"
 #include "lighting/Light.h"
+#include "primatives/Plane.h"
 
 
 class Scene {
@@ -15,7 +17,12 @@ public:
     ~Scene() = default;
 
     void addEntity(Entity* entity) {
-        entities.push_back(entity);
+        if (dynamic_cast<Plane*>(entity)) {
+            infiniteEntities.push_back(entity);
+        } else {
+            finiteEntities.push_back(entity);
+        }
+
     };
 
     static void removeEntity(){};
@@ -31,28 +38,42 @@ public:
     };
 
     [[nodiscard]] Intersection intersect(const Ray& ray) const {
-        Intersection closestHit;
-        closestHit.distance = FLT_MAX;
+        Intersection hit;
+        hit.distance = -1;
+        float closest = 1e30f;
+        const float tMin = 0.001f;
 
-        for (const Entity* entity : entities) {
-            Intersection hit;
-            hit.distance = FLT_MAX;
-
-            if (entity->intersect(ray,hit)) {
-                if(hit.distance < closestHit.distance && (hit.distance > 0)) {
-                    closestHit = hit;
-                }
+        if (bvh) {
+            Intersection bvhHit;
+            if (bvh->intersect(ray, bvhHit) && bvhHit.distance < closest)
+            {
+                closest = bvhHit.distance;
+                hit = bvhHit;
             }
         }
 
-        if (closestHit.distance == FLT_MAX) {
-            closestHit.distance = -1.0f;
+        for (auto plane : infiniteEntities) {
+            Intersection planeHit;
+            if (plane->intersect(ray, planeHit,tMin,closest) &&
+                planeHit.distance < closest && planeHit.distance > 0) {
+                closest = planeHit.distance;
+                hit = planeHit;
+            }
         }
-
-        return closestHit;
+        return hit;
     }
 
+    void buildBVH() {
+        if (!finiteEntities.empty()) {
+            bvh = std::make_unique<BVH>(finiteEntities);
+        }
+    }
+
+
+
 private:
-    std::vector<Entity*> entities;
+    std::vector<Entity*> finiteEntities;
+    std::vector<Entity*> infiniteEntities;
     std::vector<Light*> lights;
+    std::unique_ptr<BVH> bvh;
 };

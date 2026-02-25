@@ -26,26 +26,34 @@ FetchContent_Declare(imgui
 
 FetchContent_MakeAvailable(glm glfw imgui)
 
-add_executable(MREdu src/main.cpp
+add_executable(MREdu
+        src/main.cpp
+        src/glad.c
         src/modelling/core/Entity.h
-        src/modelling/components/Component.h
+        src/modelling/core/components/Component.h
         src/modelling/core/Scene.h
         src/modelling/core/Camera.h
-        src/modelling/components/Transform.h
-        src/rendering/Ray.h
-        src/rendering/Intersection.h
-        src/modelling/components/Material.h
+        src/modelling/core/components/Transform.h
+        src/rendering/structs/Ray.h
+        src/rendering/structs/Intersection.h
+        src/modelling/core/components/Material.h
         src/modelling/core/lighting/DirectionalLight.h
         src/rendering/Shader.h
         src/rendering/Shader.cpp
         src/rendering/RayTracer.cpp
         src/rendering/RayTracer.h
         src/modelling/core/primatives/Sphere.h
-        src/modelling/core/primatives/plane.h
-        src/modelling/core/primatives/cone.h
-        src/modelling/core/primatives/cylinder.h
+        src/modelling/core/primatives/Plane.h
+        src/modelling/core/primatives/Cylinder.h
         src/modelling/core/lighting/pointLight.h
-        src/modelling/core/lighting/Light.h)
+        src/modelling/core/lighting/Light.h
+        src/modelling/core/lighting/AreaLight.h
+        src/rendering/structs/RenderParams.h
+        src/modelling/core/lighting/RectangleLight.h
+        src/modelling/core/lighting/LightSample.h
+        src/modelling/core/BoundingBox.h
+        src/modelling/core/BVH.h
+        src/modelling/core/primatives/Cuboid.h)
 
 set(IMGUI_SOURCES
         $(imgui_SOURCE_DIR)/imgui.cpp
@@ -57,8 +65,10 @@ set(IMGUI_SOURCES
 )
 
 target_include_directories(MREdu PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${imgui_SOURCE_DIR}
         ${imgui_SOURCE_DIR}/backends
+
 )
 
 target_link_libraries(MREdu PRIVATE

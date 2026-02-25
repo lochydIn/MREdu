@@ -8,8 +8,9 @@ struct Ray {
     glm::vec3 origin;
     glm::vec3 direction;
 
-    explicit Ray(const glm::vec3& m_origin, const glm::vec3& m_direction)
-        : origin(m_origin), direction(m_direction) {}
+
+    explicit Ray(const glm::vec3& origin, const glm::vec3& direction)
+        : origin(origin), direction(direction) {}
 
     virtual ~Ray() = default;
 

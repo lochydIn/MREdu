@@ -8,10 +8,12 @@
 
 class PointLight : public Light {
     public:
-        PointLight(const glm::vec3& position, const glm::vec3& colour,
-            const float intensity, const float radius = 1.0f)
+        PointLight(const glm::vec3& position,
+                   const glm::vec3& colour,
+                   const float intensity,
+                   const float radius = 0.0f)
         : position(position), colour(colour),
-        intensity(intensity), radius(radius) {}
+        brightness(intensity), radius(radius) {}
 
         ~PointLight() override = default;
 
@@ -19,22 +21,17 @@ class PointLight : public Light {
 
         PointLight& operator=(PointLight&&) = delete;
 
-        [[nodiscard]] glm::vec3 getDirection(const glm::vec3& point) const override {
-            return glm::normalize(position - point); // Vector from point to light.
-        }
         [[nodiscard]] glm::vec3 getColour() const override {
-            return colour;
+            return colour * brightness;
         }
-        [[nodiscard]] float getIntensity() const override {
-            return intensity;
-        }
-        [[nodiscard]] float getDistance(const glm::vec3& point) const override {
-            return glm::length(position - point);
-        }
+
+        glm::vec3 getPosition() const {return position;}
+        float getBrightness() const {return brightness;}
+        float getRadius() const { return  radius;}
 
     private:
         glm::vec3 position;
         glm::vec3 colour;
-        float intensity;
+        float brightness;
         float radius;
 };

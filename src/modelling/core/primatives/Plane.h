@@ -3,34 +3,44 @@
 //
 
 #pragma once
+#include <iostream>
+
 #include "glm/geometric.hpp"
 #include "glm/vec3.hpp"
 #include "../Entity.h"
-#include "../../../rendering/Intersection.h"
-#include "../../../rendering/Ray.h"
+#include "../../../rendering/structs/Intersection.h"
+#include "../../../rendering/structs/Ray.h"
 
 class Plane : public Entity {
     public:
     Plane(const glm::vec3& position, const glm::vec3 normal, std::shared_ptr<Material> mat) :
     Entity(std::move(mat)), position(position),normal(normal) {}
 
-    bool intersect(const Ray& ray, Intersection& hit) const override {
-        float denom = glm::dot(normal, ray.direction);
+    bool intersect(const Ray& ray, Intersection& hit, float tMin, float tMax) const override {
+        // If intersecting ray is not parallel.
+        if (const float denom = glm::dot(normal, ray.direction); glm::abs(glm::dot(normal, ray.direction)) > 0.0001f) {
 
-        if (fabs(denom) > 0.0001f) { // If intersecting ray is not parallel.
             float t = glm::dot(position - ray.origin, normal) / denom;
-            if (t > 0.001f && t < hit.distance) {
+
+            if (t > tMin && t < tMax) {
                 hit.point = ray.origin + t * ray.direction;
-                hit.normal = normal;
+                hit.normal = (denom < 0.0f) ? normal : -normal;
                 hit.distance = t;
-                hit.entity = const_cast<Entity*>(dynamic_cast<const Entity*>(this));
+                hit.entity = const_cast<Plane*>(this);
+                hit.setFrontSurface(ray,hit.normal);
                 return true;
             }
         }
         return false;
     }
 
+    [[nodiscard]] BoundingBox getBoundingBox() const override
+    {
+        return BoundingBox(glm::vec3(-LARGE_BOUND), glm::vec3(LARGE_BOUND));
+    }
+
 private:
+    static constexpr float LARGE_BOUND = 1e30f;
     glm::vec3 position;
     glm::vec3 normal;
 };
