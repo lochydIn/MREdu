@@ -6,7 +6,7 @@
 #include <vector>
 #include "../modelling/core/Scene.h"
 #include "../modelling/core/primatives/Sphere.h"
-#include "../modelling/core/lighting/DirectionalLight.h"
+#include "../modelling/core/lighting/simple/DirectionalLight.h"
 #include "structs/RenderParams.h"
 #include "Shader.h"
 #include "../modelling/core/primatives/Plane.h"

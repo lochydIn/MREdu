@@ -3,7 +3,7 @@
 //
 
 #pragma once
-#include "Light.h"
+#include "../Light.h"
 #include <glm/glm.hpp>
 
 class PointLight : public Light {

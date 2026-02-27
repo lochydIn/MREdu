@@ -8,11 +8,13 @@
 #include "modelling/core/Camera.h"
 #include "modelling/core/primatives/Sphere.h"
 #include "modelling/core/primatives/Plane.h"
-#include "modelling/core/lighting/DirectionalLight.h"
-#include "modelling/core/lighting/PointLight.h"
+#include "modelling/core/lighting/simple/DirectionalLight.h"
+#include "modelling/core/lighting/simple/PointLight.h"
 #include "modelling/core/components/Material.h"
-#include "modelling/core/lighting/RectangleLight.h"
+#include "modelling/core/lighting/area/RectangleLight.h"
+#include "modelling/core/primatives/Cone.h"
 #include "modelling/core/primatives/Cuboid.h"
+#include "modelling/core/primatives/Cylinder.h"
 #include "modelling/core/primatives/Sphere.h"
 #include "rendering/structs/RenderParams.h"
 #include "rendering/RayTracer.h"
@@ -87,10 +89,10 @@ int main(int argc, char* argv[]) {
     Scene scene;
 
     auto whiteMat = std::make_shared<Material>(
-    glm::vec3(0.8f, 0.8f, 0.8f),  // colour
-    0.5f,                          // roughness
-    0.0f,                          // metallic
-    0.0f,                          // reflectivity
+    glm::vec3(0.8f, 0.8f, 0.8f),
+    0.5f,
+    0.0f,
+    0.0f,
     0.0f, 0.0f, glm::vec3(0.0f)
 );
 
@@ -127,7 +129,7 @@ int main(int argc, char* argv[]) {
         0.4f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
     );
 
-    // Optional: Add a glass sphere or metal sphere for variety
+
     auto glassMat = std::make_shared<Material>(
         glm::vec3(1.0f), 0.0f, 0.0f, 0.0f, 1.5f, 1.0f, glm::vec3(0.0f)
     );
@@ -139,90 +141,72 @@ int main(int argc, char* argv[]) {
     auto floor = new Plane(glm::vec3(0, 0, 0), glm::vec3(0, 1, 0), floorMat);
     scene.addEntity(floor);
 
-    // Ceiling (at y=6)
+    // Ceiling
     auto ceiling = new Plane(glm::vec3(0, 6, 0), glm::vec3(0, -1, 0), ceilingMat);
     scene.addEntity(ceiling);
 
-    // Back wall (at z=-8)
+    // Back wall
     auto backWall = new Plane(glm::vec3(0, 3, -8), glm::vec3(0, 0, 1), whiteMat);
     scene.addEntity(backWall);
 
-    // Left wall (at x=-5) - GREEN
+    // Left wall
     auto leftWall = new Plane(glm::vec3(-3, 3, -4), glm::vec3(1, 0, 0), redMat);
     scene.addEntity(leftWall);
 
-    // Right wall (at x=5) - RED
+    // Right wall
     auto rightWall = new Plane(glm::vec3(3, 3, -4), glm::vec3(-1, 0, 0), blueMat);
     scene.addEntity(rightWall);
 
     auto reflectiveSphere = new Sphere(1.0f,glm::vec3(1.2f, 1.0f, -1.0f),goldMat);
 
-    // Tall box on left
-    auto tallBox = new Cuboid(
-        glm::vec3(1.2f, 1.5f, -1.0f),           // position
-        glm::vec3(-1.0f, -1.5f, -1.0f),          // min
-        glm::vec3(1.0f, 1.5f, 1.0f),             // max (3 units tall)
-        box2Mat
-    );
+
     //scene.addEntity(tallBox);
     scene.addEntity(reflectiveSphere);
 
 
-    // Short box on right
-    auto shortBox = new Cuboid(
-        glm::vec3(-1.3f, 1.0f, -0.5f),            // position
-        glm::vec3(-1.0f, -1.0f, -1.0f),          // min
-        glm::vec3(1.0f, 1.0f, 1.0f),             // max (2 units tall)
-        box1Mat
-    );
-    scene.addEntity(shortBox);
+    // Short box on left
+    auto cone = new Cone(glm::vec3(-1.3f, 1.0f, -0.5f),2.0f,1.0f,box1Mat);
+    scene.addEntity(cone);
 
     auto ceilingLight = RectangleLight(
-    glm::vec3(0.0f, 5.93f, -0.25f),            // center (just below ceiling)
-    glm::vec3(1.0f, 0.0f, 0.0f),              // uAxis (width)
-    glm::vec3(0.0f, 0.0f, 1.0f),              // vAxis (depth)
-    glm::vec3(1.0f, 0.95f, 0.9f),             // warm white
+    glm::vec3(0.0f, 5.93f, -0.25f),glm::vec3(1.0f, 0.0f, 0.0f),
+    glm::vec3(0.0f, 0.0f, 1.0f),glm::vec3(1.0f, 0.95f, 0.9f),
     1.0f);
 
     scene.addLight(&ceilingLight);
 
     // Material for the visible light source (emissive)
     auto lightMaterial = std::make_shared<Material>(
-        glm::vec3(1.0f, 1.0f, 1.0f), // Base colour (white)
-        0.0f,                         // roughness (doesn't matter much)
-        0.0f,                         // metallic
-        0.0f,                         // reflectivity
-        1.0f,                         // iOR (doesn't matter)
-        0.0f,                         // transparency
-        glm::vec3(0.0f)               // attenuation
-    );
-    lightMaterial->emissive = glm::vec3(10.0f); // Make it glow white!
+        glm::vec3(1.0f, 1.0f, 1.0f), 0.0f,0.0f,
+        0.0f,1.0f,0.0f,glm::vec3(0.0f));
 
-    // The VISIBLE white rectangle (a thin box)
+    lightMaterial->emissive = glm::vec3(1.0f);
+
+    // The VISIBLE white rectangle
     glm::vec3 lightPos(0.0f, 5.999f, -0.25f);
-    glm::vec3 lightHalfSize(1.0f, 0.0001f, 1.0f); // Very thin in Y direction
+    glm::vec3 lightHalfSize(1.0f, 0.0001f, 1.0f);
 
     auto visibleLight = new Cuboid(
-        lightPos,                         // position
-        -lightHalfSize,                   // min
-        lightHalfSize,                    // max
-        lightMaterial                     // Emissive material
+        lightPos,
+        -lightHalfSize,
+        lightHalfSize,
+        lightMaterial
     );
     scene.addEntity(visibleLight);
 
     Camera camera(
-        glm::vec3(0.0f, 2.5f, 8.0f),            // position (looking into box)
-        glm::vec3(0.0f, 2.5f, -4.0f)              // look at center of box
+        glm::vec3(0.0f, 2.5f, 8.0f),
+        glm::vec3(0.0f, 2.5f, -4.0f)
     );
 
     // Render Setup
     RenderParams renderParams;
 
     // Quality Settings. (Anti-Aliasing)
-    renderParams.primarySamples = 16;
-    renderParams.reflectionSamples = 16;
-    renderParams.shadowSamples = 32;
-    renderParams.maxDepth = 5;
+    renderParams.primarySamples = 1;
+    renderParams.reflectionSamples = 1;
+    renderParams.shadowSamples = 1;
+    renderParams.maxDepth = 2;
 
     // Shadow Settings
     renderParams.softShadows = true;

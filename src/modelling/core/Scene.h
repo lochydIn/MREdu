@@ -3,7 +3,7 @@
 //
 
 #pragma once
-#include "lighting/DirectionalLight.h"
+#include "lighting/simple/DirectionalLight.h"
 #include "../../rendering/structs/Intersection.h"
 #include "Entity.h"
 #include "BVH.h"

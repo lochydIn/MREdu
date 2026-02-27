@@ -8,7 +8,7 @@
 #include <cmath>
 #include "RayTracer.h"
 #include "../modelling/core/Scene.h"
-#include "../modelling/core/lighting/PointLight.h"
+#include "../modelling/core/lighting/simple/PointLight.h"
 #include "glm/ext/quaternion_exponential.hpp"
 #include "glm/ext/scalar_constants.hpp"
 

@@ -24,7 +24,7 @@ class Material : public Component {
                           const float metallic = 0.0f,
                           const float reflectivity = 0.0f,
                           const float iOR = 0.0f,
-                          float transparency = 0.0f,
+                          const float transparency = 0.0f,
                           const glm::vec3 attenuation = glm::vec3(0.0f,0.0f,0.0f))
             : colour(colour),
             roughness(roughness),

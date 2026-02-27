@@ -40,7 +40,8 @@ public:
     }
 
     [[nodiscard]] BoundingBox getBoundingBox() const override {
-        return BoundingBox(center - glm::vec3(radius), center + glm::vec3(radius));
+        auto const bB = BoundingBox(center - glm::vec3(radius), center + glm::vec3(radius));
+        return bB;
     }
 
     Transform transform;

@@ -77,7 +77,8 @@ class Cuboid : public Entity {
         }
 
         [[nodiscard]] BoundingBox getBoundingBox() const override {
-            return BoundingBox(position + min, position + max);
+            auto const bB = BoundingBox(position + min, position + max);
+            return bB;
         }
 
     private:

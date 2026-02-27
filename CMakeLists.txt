@@ -37,7 +37,7 @@ add_executable(MREdu
         src/rendering/structs/Ray.h
         src/rendering/structs/Intersection.h
         src/modelling/core/components/Material.h
-        src/modelling/core/lighting/DirectionalLight.h
+        src/modelling/core/lighting/simple/DirectionalLight.h
         src/rendering/Shader.h
         src/rendering/Shader.cpp
         src/rendering/RayTracer.cpp
@@ -45,15 +45,19 @@ add_executable(MREdu
         src/modelling/core/primatives/Sphere.h
         src/modelling/core/primatives/Plane.h
         src/modelling/core/primatives/Cylinder.h
-        src/modelling/core/lighting/pointLight.h
+        src/modelling/core/lighting/simple/PointLight.h
         src/modelling/core/lighting/Light.h
         src/modelling/core/lighting/AreaLight.h
         src/rendering/structs/RenderParams.h
-        src/modelling/core/lighting/RectangleLight.h
+        src/modelling/core/lighting/area/RectangleLight.h
         src/modelling/core/lighting/LightSample.h
         src/modelling/core/BoundingBox.h
         src/modelling/core/BVH.h
-        src/modelling/core/primatives/Cuboid.h)
+        src/modelling/core/primatives/Cuboid.h
+        src/modelling/core/primatives/Cone.h
+        src/modelling/core/lighting/area/CuboidLight.h
+        src/modelling/core/lighting/area/SphereLight.h
+        src/modelling/core/lighting/area/CylinderLight.h)
 
 set(IMGUI_SOURCES
         $(imgui_SOURCE_DIR)/imgui.cpp
