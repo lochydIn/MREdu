@@ -69,13 +69,14 @@ class Cylinder : public Entity {
                         }
                     }
                 }
-                if (t < INFINITY && t < tMax) {}
+                if (t < INFINITY && t < tMax) {
                     hit.distance = t;
                     hit.normal = normal;
                     hit.point = ray.positionAt(t);
                     hit.entity = const_cast<Cylinder*>(this);
                     hit.setFrontSurface(ray, hit.normal);
                     return true;
+                }
             }
             return false;
         }

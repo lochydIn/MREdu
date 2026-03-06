@@ -206,7 +206,6 @@ glm::vec3 Shader::shade (const Scene& scene, const Intersection& intersection, c
 
         } else if (auto areaLight = dynamic_cast<AreaLight*>(light)) {
             glm::vec3 totalLight(0.0f);
-
             for (int i = 0; i < params.shadowSamples; i++) {
                 float r1 = RayTracer::halton(
                     sampleIndex * params.shadowSamples + i, params.shadowHaltonBases[0]);
@@ -223,21 +222,23 @@ glm::vec3 Shader::shade (const Scene& scene, const Intersection& intersection, c
                     glm::vec3 shadowOrigin = intersection.point + N * params.shadowBias;
                     Ray shadowRay(shadowOrigin,sample.w);
                     Intersection shadowHit = scene.intersect(shadowRay);
-                    if (shadowHit.distance < 0 || shadowHit.distance > sample.distance) {
+
+                    if (shadowHit.distance < 0 || shadowHit.distance > sample.distance
+                        || (shadowHit.entity->isLight())) {
                         glm::vec3 brdfValue = bRDF(mat,N,V,sample.w);
                         float attenuation = 1.0f / sample.distance * sample.distance;
                         totalLight +=
                             brdfValue * sample.Le * cosThetaLight * attenuation / sample.pdf;
                     }
                 }
+                colour += totalLight / static_cast<float>(params.shadowSamples);
             }
-            colour += totalLight / static_cast<float>(params.shadowSamples);
+
         }
     }
     colour += mat.emissive;
     colour = glm::clamp(colour, 0.0f, 1.0f);
     return colour;
-
 };
 
 

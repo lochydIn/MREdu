@@ -21,10 +21,12 @@ class Entity {
         //Key Methods
                 virtual bool intersect(const Ray& ray, Intersection& hit, float tMin, float tMax) const = 0;
 
-                const Material& getMaterial() const { return *material; }
+                [[nodiscard]] const Material& getMaterial() const { return *material; }
                 static void setMaterial(std::unique_ptr<Material>material) {material = std::move(material);}
 
-                virtual BoundingBox getBoundingBox() const = 0;
+                [[nodiscard]] virtual BoundingBox getBoundingBox() const = 0;
+
+                [[nodiscard]] virtual bool isLight() const {return false;}
 
         // Copy Prevention
                 Entity(const Entity&) = delete;
