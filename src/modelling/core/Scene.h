@@ -3,7 +3,6 @@
 //
 
 #pragma once
-#include "lighting/simple/DirectionalLight.h"
 #include "../../rendering/structs/Intersection.h"
 #include "Entity.h"
 #include "BVH.h"
@@ -41,7 +40,7 @@ public:
         Intersection hit;
         hit.distance = -1;
         float closest = 1e30f;
-        const float tMin = 0.001f;
+        constexpr float tMin = 0.001f;
 
         if (bvh) {
             Intersection bvhHit;

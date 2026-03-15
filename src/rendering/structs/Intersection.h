@@ -5,7 +5,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include "Ray.h"
-#include "../../modelling/core/Entity.h"
+class Entity;
 
 struct Intersection
 {

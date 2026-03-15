@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <glm/glm.hpp>
 
 struct LightSample {
     glm::vec3 Le;   // Emitted radiance.

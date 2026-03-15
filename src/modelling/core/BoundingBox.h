@@ -5,6 +5,7 @@
 #pragma once
 #include "glm/vec3.hpp"
 #include "glm/gtx/extended_min_max.hpp"
+#include "../../rendering/structs/Ray.h"
 
 struct BoundingBox {
     glm::vec3 min; // Bottom left coord
@@ -47,7 +48,7 @@ struct BoundingBox {
     }
 
     // Which is the boxes longest dimension ? - for splitting.
-    int maxDimension() const
+    [[nodiscard]] int maxDimension() const
     {
         glm::vec3 extent = max - min;
         if (extent.x > extent.y && extent.x > extent.z) { return 0;}

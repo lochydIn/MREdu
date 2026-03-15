@@ -5,8 +5,6 @@
 #pragma once
 #include "../Entity.h"
 #include "../components/Transform.h"
-#include "../../../rendering/structs/Ray.h"
-#include "../../../rendering/structs/Intersection.h"
 
 class Cuboid : public Entity {
     public:

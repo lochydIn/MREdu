@@ -5,14 +5,12 @@
 #pragma once
 #include <memory>
 #include "../Entity.h"
-#include "../../../rendering/structs/Intersection.h"
-#include "../../../rendering/structs/Ray.h"
 #include "../components/Material.h"
 #include "../components/Transform.h"
 
 class Cone : public Entity {
     public:
-        Cone(const glm::vec3 position, const float height, const float radius, std::shared_ptr<Material>& mat)
+        Cone(const glm::vec3 position, const float height, const float radius, const std::shared_ptr<Material>& mat)
             : Entity(mat), position(glm::vec3(position.x,position.y + height, position.z)), radius(radius), height(height * 2) {}
 
         Cone(const Cone&) = delete;

@@ -4,8 +4,6 @@
 
 #pragma once
 #include "glm/vec3.hpp"
-#include "../../../rendering/structs/Ray.h"
-#include "../../../rendering/structs/Intersection.h"
 #include "../components/Transform.h"
 
 class Cylinder : public Entity {

@@ -21,17 +21,14 @@ struct BVHNode {
 
 class BVH {
     public:
-        BVH(const std::vector<Entity*>& entities) : allEntities(entities)
-        {
-            if (!allEntities.empty())
-            {
+        BVH(const std::vector<Entity*>& entities) : allEntities(entities) {
+            if (!allEntities.empty()) {
                 const std::vector<Entity*>& entitiesCopy = entities;
                 root = buildBVH(entitiesCopy, 0);
             }
         }
 
-        bool intersect(const Ray& ray, Intersection& hit) const
-        {
+        bool intersect(const Ray& ray, Intersection& hit) const {
             if (!root) return false;
             float tMin = 1e30f;
             return intersectNode(root.get(), ray, tMin, hit);
@@ -43,7 +40,7 @@ class BVH {
         std::unique_ptr<BVHNode> root;
         std::vector<Entity*> allEntities;
 
-        std::unique_ptr<BVHNode> buildBVH(std::vector<Entity*> entities, const int depth) {
+        static std::unique_ptr<BVHNode> buildBVH(std::vector<Entity*> entities, const int depth) {
             auto node = std::make_unique<BVHNode>();
 
             // For all ents get bb.
@@ -59,7 +56,7 @@ class BVH {
 
             int axis = node->box.maxDimension();
 
-            std::sort(entities.begin(),entities.end(),[axis](Entity* a, Entity* b) {
+            std::sort(entities.begin(),entities.end(),[axis](const Entity* a, const Entity* b) {
                 float centerA = (a->getBoundingBox().min[axis] + a->getBoundingBox().max[axis]) * 0.5f;
                 float centerB = (b->getBoundingBox().min[axis] + b->getBoundingBox().max[axis]) * 0.5f;
 
@@ -79,7 +76,8 @@ class BVH {
             return node;
         }
 
-        bool intersectNode(const BVHNode* node, const Ray& ray, float& tMin, Intersection& hit) const {
+        static bool intersectNode(const BVHNode* node, const Ray& ray, float& tMin, Intersection& hit)
+        {
             float boxTMin, boxTMax;
 
             if (!node->box.intersect(ray,boxTMin, boxTMax)) {

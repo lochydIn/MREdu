@@ -57,7 +57,13 @@ add_executable(MREdu
         src/modelling/core/primatives/Cone.h
         src/modelling/core/lighting/area/CuboidLight.h
         src/modelling/core/lighting/area/SphereLight.h
-        src/modelling/core/lighting/area/CylinderLight.h)
+        src/modelling/core/lighting/area/CylinderLight.h
+        src/tiny_obj_loader.h
+        src/modelling/core/primatives/Triangle.h
+        src/modelling/core/complex/Mesh.h
+        src/modelling/core/complex/MeshLoader.h
+        src/modelling/core/complex/MeshLoader.cpp
+)
 
 set(IMGUI_SOURCES
         $(imgui_SOURCE_DIR)/imgui.cpp

@@ -3,13 +3,10 @@
 //
 
 #pragma once
-#include <iostream>
-
 #include "glm/geometric.hpp"
 #include "glm/vec3.hpp"
 #include "../Entity.h"
-#include "../../../rendering/structs/Intersection.h"
-#include "../../../rendering/structs/Ray.h"
+
 
 class Plane : public Entity {
     public:
@@ -34,9 +31,9 @@ class Plane : public Entity {
         return false;
     }
 
-    [[nodiscard]] BoundingBox getBoundingBox() const override
-    {
-        return BoundingBox(glm::vec3(-LARGE_BOUND), glm::vec3(LARGE_BOUND));
+    [[nodiscard]] BoundingBox getBoundingBox() const override {
+        const auto bB = BoundingBox(glm::vec3(-LARGE_BOUND), glm::vec3(LARGE_BOUND));
+        return bB;
     }
 
 private:

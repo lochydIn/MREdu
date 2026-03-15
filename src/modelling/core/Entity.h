@@ -6,6 +6,8 @@
 #include <memory>
 #include "BoundingBox.h"
 #include "components/Material.h"
+#include "../../rendering/structs/Intersection.h"
+#include "../../rendering/structs/Ray.h"
 
 struct Intersection;
 

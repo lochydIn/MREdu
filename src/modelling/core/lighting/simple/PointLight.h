@@ -25,9 +25,9 @@ class PointLight : public Light {
             return colour * brightness;
         }
 
-        glm::vec3 getPosition() const {return position;}
-        float getBrightness() const {return brightness;}
-        float getRadius() const { return  radius;}
+        [[nodiscard]] glm::vec3 getPosition() const {return position;}
+        [[nodiscard]] float getBrightness() const {return brightness;}
+        [[nodiscard]] float getRadius() const { return  radius;}
 
     private:
         glm::vec3 position;

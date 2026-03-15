@@ -3,8 +3,6 @@
 //
 #pragma once
 #include <cmath>
-#include "../../../rendering/structs/Intersection.h"
-#include "../../../rendering/structs/Ray.h"
 #include "../Entity.h"
 #include "../components/Transform.h"
 #include "../components/Material.h"

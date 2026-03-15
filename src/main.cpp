@@ -6,6 +6,8 @@
 #include "../cmake-build-debug/_deps/glfw-src/include/GLFW/glfw3.h"
 #include "modelling/core/Scene.h"
 #include "modelling/core/Camera.h"
+#include "modelling/core/complex/Mesh.h"
+#include "modelling/core/complex/MeshLoader.h"
 #include "modelling/core/primatives/Sphere.h"
 #include "modelling/core/primatives/Plane.h"
 #include "modelling/core/lighting/simple/DirectionalLight.h"
@@ -23,7 +25,7 @@
 #include "rendering/RayTracer.h"
 
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+void framebuffer_size_callback(GLFWwindow* window, const int width, const int height) {
     glViewport(0, 0, width, height);
 }
 
@@ -50,7 +52,7 @@ void main() {
 )";
 
 // Helper function to check shader compilation
-bool checkShaderCompile(GLuint shader, const char* name) {
+bool checkShaderCompile(const GLuint shader, const char* name) {
     int success;
     char infoLog[512];
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
@@ -91,123 +93,16 @@ int main(int argc, char* argv[]) {
     // Scene Test Setup
     Scene scene;
 
-    auto whiteMat = std::make_shared<Material>(
-    glm::vec3(0.8f, 0.8f, 0.8f),
-    0.5f,
-    0.0f,
-    0.0f,
-    0.0f, 0.0f, glm::vec3(0.0f)
-);
+    auto mat = std::make_shared<Material>(glm::vec3(0.6f,0.0f,0.0f),0.3f,0.0f,
+        0.0f,0.0f,0.0f,glm::vec3(0.0f));
 
-    // Red diffuse for right wall
-    auto redMat = std::make_shared<Material>(
-        glm::vec3(0.8f, 0.1f, 0.1f),   // colour
-        0.5f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
-    );
+    auto light = new DirectionalLight(glm::vec3(0,-1,0), glm::vec3(1.0f,1.0f,1.0f),3.0f,0.05f);
+    scene.addLight(light);
 
-    // Green diffuse for left wall
-    auto blueMat = std::make_shared<Material>(
-        glm::vec3(0.294f, 0.663f, 0.784f),   // colour
-        0.5f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
-    );
+    auto bunny = loadObjectMesh("C:/Users/Lochlan Harvey/Desktop/MREdu/src/objects/bunny.obj",
+        glm::vec3(0.0f,1.5f,0.0f),mat);
 
-    // White diffuse for ceiling
-    auto ceilingMat = std::make_shared<Material>(
-        glm::vec3(0.8f, 0.8f, 0.8f), 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
-    );
-
-    // White diffuse for floor
-    auto floorMat = std::make_shared<Material>(
-        glm::vec3(0.8f, 0.8f, 0.8f), 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
-    );
-
-    // Materials for the boxes
-    auto box1Mat = std::make_shared<Material>(
-        glm::vec3(0.38f, 0.78f, 0.384),  // Green box
-        0.4f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
-    );
-
-    auto box2Mat = std::make_shared<Material>(
-        glm::vec3(0.9f, 0.9f, 0.9f),  // white box
-        0.4f, 0.0f, 0.0f, 0.0f, 0.0f, glm::vec3(0.0f)
-    );
-
-
-    auto glassMat = std::make_shared<Material>(
-        glm::vec3(1.0f), 0.0f, 0.0f, 0.0f, 1.5f, 1.0f, glm::vec3(0.0f)
-    );
-
-    auto goldMat = std::make_shared<Material>(
-        glm::vec3(1.0f, 0.8f, 0.3f), 0.1f, 1.0f, 0.9f, 0.0f, 0.0f, glm::vec3(0.0f)
-    );
-
-    auto floor = new Plane(glm::vec3(0, 0, 0), glm::vec3(0, 1, 0), floorMat);
-    scene.addEntity(floor);
-
-    // Ceiling
-    auto ceiling = new Plane(glm::vec3(0, 6, 0), glm::vec3(0, -1, 0), ceilingMat);
-    scene.addEntity(ceiling);
-
-    // Back wall
-    auto backWall = new Plane(glm::vec3(0, 3, -4), glm::vec3(0, 0, 1), whiteMat);
-    scene.addEntity(backWall);
-
-    // Left wall
-    auto leftWall = new Plane(glm::vec3(-3, 3, -4), glm::vec3(1, 0, 0), redMat);
-    scene.addEntity(leftWall);
-
-    // Right wall
-    auto rightWall = new Plane(glm::vec3(3, 3, -4), glm::vec3(-1, 0, 0), blueMat);
-    scene.addEntity(rightWall);
-
-    auto reflectiveSphere = new Sphere(1.0f,glm::vec3(1.2f, 1.0f, -1.0f),goldMat);
-
-
-    //scene.addEntity(tallBox);
-    scene.addEntity(reflectiveSphere);
-
-
-    // Short box on left
-    auto cone = new Cone(glm::vec3(-1.3f, 1.0f, -0.5f),2.0f,1.0f,box1Mat);
-    scene.addEntity(cone);
-
-
-    auto rectLight = new RectangleLight(
-        glm::vec3(0.0f, 5.93f, -0.25f),
-        glm::vec3(1.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 0.0f, 1.0f),
-        glm::vec3(1.0f, 0.95f, 0.9f),
-        0.2f);
-
-    auto cuboidLight = new CuboidLight(
-        glm::vec3(0.0f, 5.9f,-2.0f),
-        glm::vec3(1.0f,0.95f,0.9f),
-        0.5f,
-        glm::vec3(-0.5f,-0.01f,-0.5f),
-        glm::vec3(0.5f,0.01f,0.5f));
-
-    auto sphereLight = new SphereLight(
-        glm::vec3(0.0f,5.0f,-2.0f),
-        1.0f,
-        glm::vec3(1.0f,0.95f,0.9f),
-        0.5f);
-
-
-    auto cylinderLight = new CylinderLight(
-        glm::vec3(0.0f,5.95f,-2.0f),
-        1.0f,0.5f,glm::vec3(1.0f,0.95f,0.9f),0.5f);
-
-    //scene.addEntity(rectLight);
-    //scene.addLight(rectLight);
-
-    //scene.addEntity(cuboidLight);
-    //scene.addLight(cuboidLight);
-
-    //scene.addEntity(sphereLight);
-    //scene.addLight(sphereLight);
-
-    //scene.addEntity(cylinderLight);
-    //scene.addLight(cylinderLight);
+    scene.addEntity(bunny);
 
 
     Camera camera(
@@ -221,8 +116,8 @@ int main(int argc, char* argv[]) {
     // Quality Settings. (Anti-Aliasing)
     renderParams.primarySamples = 16;
     renderParams.reflectionSamples = 1;
-    renderParams.shadowSamples = 6;
-    renderParams.maxDepth = 3;
+    renderParams.shadowSamples = 8;
+    renderParams.maxDepth = 1;
 
     // Shadow Settings
     renderParams.softShadows = true;
