@@ -9,4 +9,4 @@
 class Mesh;
 class Material;
 
-Mesh* loadObjectMesh(const std::string& fileName,const glm::vec3& position, const std::shared_ptr<Material>& material);
+Mesh* loadObjectMesh(const std::string& fileName,const glm::vec3& position, float scale, const std::shared_ptr<Material>& material);

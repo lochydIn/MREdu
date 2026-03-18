@@ -4,6 +4,8 @@
 
 #include "RayTracer.h"
 
+#include <iostream>
+
 float RayTracer::halton(int index, const int base) {
     float result = 0.0f;
     float f = 1.0f;

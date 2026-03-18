@@ -63,6 +63,9 @@ add_executable(MREdu
         src/modelling/core/complex/Mesh.h
         src/modelling/core/complex/MeshLoader.h
         src/modelling/core/complex/MeshLoader.cpp
+        src/modelling/core/components/Texture.h
+        src/modelling/core/components/stb_image.h
+        src/modelling/core/components/Texture.cpp
 )
 
 set(IMGUI_SOURCES

@@ -93,30 +93,35 @@ int main(int argc, char* argv[]) {
     // Scene Test Setup
     Scene scene;
 
-    auto mat = std::make_shared<Material>(glm::vec3(0.6f,0.0f,0.0f),0.3f,0.0f,
-        0.0f,0.0f,0.0f,glm::vec3(0.0f));
+    auto brickTexture = std::make_shared<Texture>("C:/Users/Lochlan Harvey/Desktop/MREdu/src/assets/textures/rock_01_diff_4k.jpg");
 
-    auto light = new DirectionalLight(glm::vec3(0,-1,0), glm::vec3(1.0f,1.0f,1.0f),3.0f,0.05f);
+    auto mat = std::make_shared<Material>(glm::vec3(0.8f,0.8f,0.8f),0.3f,0.0f,
+        0.0f,0.0f,0.0f,glm::vec3(0.0f));
+    mat->albedoMap = brickTexture;
+
+
+    auto light = new DirectionalLight(glm::vec3(0,-1,-1),
+        glm::vec3(1.0f,1.0f,1.0f),3.0f,0.05f);
     scene.addLight(light);
 
-    auto bunny = loadObjectMesh("C:/Users/Lochlan Harvey/Desktop/MREdu/src/objects/bunny.obj",
-        glm::vec3(0.0f,1.5f,0.0f),mat);
+    auto f16 = loadObjectMesh("C:/Users/Lochlan Harvey/Desktop/MREdu/src/assets/objects/f16.obj",
+        glm::vec3(0.0f,1.5f,0.0f),2.0f,mat);
 
-    scene.addEntity(bunny);
 
+    scene.addEntity(f16);
 
     Camera camera(
-        glm::vec3(0.0f, 2.5f, 8.0f),
-        glm::vec3(0.0f, 2.5f, -4.0f)
+        glm::vec3(0.0f, 3.5f, 6.0f),
+        glm::vec3(0.0f, 2.5f, 0.0f)
     );
 
     // Render Setup
     RenderParams renderParams;
 
     // Quality Settings. (Anti-Aliasing)
-    renderParams.primarySamples = 16;
+    renderParams.primarySamples = 1;
     renderParams.reflectionSamples = 1;
-    renderParams.shadowSamples = 8;
+    renderParams.shadowSamples = 4;
     renderParams.maxDepth = 1;
 
     // Shadow Settings

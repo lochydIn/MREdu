@@ -12,6 +12,7 @@
 #include "glm/ext/quaternion_exponential.hpp"
 #include "glm/ext/scalar_constants.hpp"
 
+
 float Shader::distributionGGX(float nDotH, const float roughness) {
     float roughness2 = roughness * roughness;
     float roughness4 = roughness2 * roughness2;
@@ -27,15 +28,15 @@ float Shader::geometryShading(float const nDotL, const float nDotV, const float 
     return G;
 }
 
-glm::vec3 Shader::fresnelSchlick(const Material& mat, const float nDotV)
-{
-    const glm::vec3 F0 = glm::mix(glm::vec3(0.04f),mat.colour,mat.metallic);
+glm::vec3 Shader::fresnelSchlick(const glm::vec3& surfaceColour, float metallic, float nDotV) {
+    const glm::vec3 F0 = glm::mix(glm::vec3(0.04f),surfaceColour,metallic);
     // Fresnel Function.
     const glm::vec3 F = F0 + (glm::vec3(1.0f) - F0) * glm::pow(1.0f - nDotV, 5.0f);
     return F;
 }
 
-glm::vec3 Shader::bRDF(const Material& mat, const glm::vec3& N, const glm::vec3& V, const glm::vec3& L) {
+glm::vec3 Shader::bRDF(const Material& mat, glm::vec3 surfaceColour,
+                const glm::vec3& N, const glm::vec3& V, const glm::vec3& L) {
 
     glm::vec3 H = glm::normalize(V + L);
     float nDotV = glm::max(glm::dot(N,V),0.0001f);
@@ -43,7 +44,7 @@ glm::vec3 Shader::bRDF(const Material& mat, const glm::vec3& N, const glm::vec3&
     float nDotH = glm::max(glm::dot(N,H),0.0001f);
 
 
-    glm::vec3 F = fresnelSchlick(mat,nDotV);
+    glm::vec3 F = fresnelSchlick(surfaceColour,mat.metallic,nDotV);
     float D = distributionGGX(nDotH, mat.roughness);
     float G = geometryShading(nDotL, nDotV, mat.roughness);
 
@@ -52,7 +53,7 @@ glm::vec3 Shader::bRDF(const Material& mat, const glm::vec3& N, const glm::vec3&
 
     // Diffuse BRDF (lambertian)
     glm::vec3 kD = (glm::vec3(1.0f) - F) * (1.0f - mat.metallic);
-    glm::vec3 diffuse = kD * mat.colour / glm::pi<float>();
+    glm::vec3 diffuse = kD * surfaceColour / glm::pi<float>();
 
     return diffuse + specular;
 }
@@ -96,7 +97,8 @@ glm::vec3 Shader::shade (const Scene& scene, const Intersection& intersection, c
     const Material& mat = intersection.entity->getMaterial();
     glm::vec3 N = glm::normalize(intersection.normal);
     glm::vec3 V = -glm::normalize(ray.direction);
-    glm::vec3 colour = mat.colour * 0.1f; //Ambient Light
+    glm::vec3 surfaceColour = mat.getColour(intersection.uv);
+    glm::vec3 colour = surfaceColour * 0.1f; //Ambient Light
 
     for (const auto& light : scene.getLights()) {
 
@@ -136,7 +138,7 @@ glm::vec3 Shader::shade (const Scene& scene, const Intersection& intersection, c
                         Intersection shadowHit = scene.intersect(shadowRay);
 
                         if (shadowHit.distance < 0 || shadowHit.distance > distance) {
-                            glm::vec3 brdfValue = bRDF(mat,N,V,L);
+                            glm::vec3 brdfValue = bRDF(mat,surfaceColour,N,V,L);
                             float attenuation = 1.0f / (distance * distance);
                             totalLight += brdfValue * lightColour * nDotL * attenuation;
                         }
@@ -157,7 +159,7 @@ glm::vec3 Shader::shade (const Scene& scene, const Intersection& intersection, c
 
                     if (shadowHit.distance < 0 || shadowHit.distance > distance)
                     {
-                        glm::vec3 brdfValue = bRDF(mat,N,V,L);
+                        glm::vec3 brdfValue = bRDF(mat,surfaceColour,N,V,L);
                         float attenuation = 1.0f / (distance * distance);
                         colour += brdfValue * lightColour * nDotL * attenuation;
                     }
@@ -182,7 +184,7 @@ glm::vec3 Shader::shade (const Scene& scene, const Intersection& intersection, c
                         Intersection shadowHit = scene.intersect(shadowRay);
 
                         if (shadowHit.distance < 0) {
-                            glm::vec3 brdfValue = bRDF(mat,N,V,L);
+                            glm::vec3 brdfValue = bRDF(mat,surfaceColour,N,V,L);
                             totalLight += brdfValue * directionalLight->getColour() * nDotL;
                         }
                     }
@@ -198,7 +200,7 @@ glm::vec3 Shader::shade (const Scene& scene, const Intersection& intersection, c
                     Intersection shadowHit = scene.intersect(shadowRay);
                     if (shadowHit.distance < 0)
                     {
-                        glm::vec3 brdfValue = bRDF(mat,N,V,L);
+                        glm::vec3 brdfValue = bRDF(mat,surfaceColour,N,V,L);
                         colour += brdfValue * directionalLight->getColour() * nDotL;
                     }
                 }
@@ -225,7 +227,7 @@ glm::vec3 Shader::shade (const Scene& scene, const Intersection& intersection, c
 
                     if (shadowHit.distance < 0 || shadowHit.distance > sample.distance
                         || (shadowHit.entity->isLight())) {
-                        glm::vec3 brdfValue = bRDF(mat,N,V,sample.w);
+                        glm::vec3 brdfValue = bRDF(mat,surfaceColour,N,V,sample.w);
                         float attenuation = 1.0f / sample.distance * sample.distance;
                         totalLight +=
                             brdfValue * sample.Le * cosThetaLight * attenuation / sample.pdf;
@@ -238,6 +240,7 @@ glm::vec3 Shader::shade (const Scene& scene, const Intersection& intersection, c
     }
     colour += mat.emissive;
     colour = glm::clamp(colour, 0.0f, 1.0f);
+
     return colour;
 };
 

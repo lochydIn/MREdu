@@ -22,9 +22,10 @@ private:
 
         static float geometryShading(float nDotL, float nDotV, float roughness);
 
-        static glm::vec3 fresnelSchlick(const Material& mat, float nDotV);
+        static glm::vec3 fresnelSchlick(const glm::vec3& surfaceColour, float metallic, float nDotV);
 
-        static glm::vec3 bRDF(const Material& mat, const glm::vec3& N, const glm::vec3& V, const glm::vec3& L);
+        static glm::vec3 bRDF(const Material& mat, glm::vec3 surfaceColour,
+                const glm::vec3& N, const glm::vec3& V, const glm::vec3& L);
 
 
 };

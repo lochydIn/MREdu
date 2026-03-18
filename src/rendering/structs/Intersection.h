@@ -14,6 +14,7 @@ struct Intersection
     bool frontSurface;
     float distance = -1.0f; // The distance along the ray that the hit occurs.
     Entity* entity; // The entity being hit.
+    glm::vec2 uv;
 
     void setFrontSurface(const Ray& ray, const glm::vec3& outwardNormal)
     {
