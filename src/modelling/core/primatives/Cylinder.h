@@ -58,7 +58,7 @@ class Cylinder : public Entity {
                     float const tCap = (capY - rO.y) / rD.y;
 
                     if (tCap > tMin && tCap < t) {
-                        glm::vec3 point = rO + rD * tCap;
+                        const glm::vec3 point = rO + rD * tCap;
                         float dist2 = point.x * point.x + point.z * point.z;
 
                         if (dist2 <= radius * radius) {
@@ -71,6 +71,22 @@ class Cylinder : public Entity {
                     hit.distance = t;
                     hit.normal = normal;
                     hit.point = ray.positionAt(t);
+                    glm::vec3 localPoint = hit.point - position;
+                    if (glm::abs(hit.normal.y) < 0.1f) {
+                        float u = atan2(localPoint.z,localPoint.x) / (2.0f * M_PI);
+                        if (u < 0.0f) {
+                            u += 1.0f;
+                        }
+                        float v = (localPoint.y + height * 0.5f) / height;
+                        hit.uv = glm::vec2(u, v);
+                    } else {
+                        float r = glm::length(glm::vec2(localPoint.x, localPoint.z)) / radius;
+                        float angle = atan2(localPoint.z,localPoint.x);
+
+                        float u = r * cos(angle) * 0.5f + 0.5f;
+                        float v = r * sin(angle) * 0.5f + 0.5f;
+                        hit.uv = glm::vec2(u, v);
+                    }
                     hit.entity = const_cast<Cylinder*>(this);
                     hit.setFrontSurface(ray, hit.normal);
                     return true;

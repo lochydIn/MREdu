@@ -28,6 +28,8 @@ public:
             if (t > 0) { // If the intersection is within bounds.
                 intersection.point = ray.origin  + ray.direction * t; // Set the intersection point.
                 const glm::vec3 outwardNormal = glm::normalize(intersection.point - center);
+                intersection.uv.x = 0.5f + atan2(outwardNormal.z, outwardNormal.x) / (2 * M_PI);
+                intersection.uv.y = 0.5f - asin(outwardNormal.y) / M_PI;
                 intersection.setFrontSurface(ray, outwardNormal);
                 intersection.distance = t;
                 intersection.entity = const_cast<Entity*>(dynamic_cast<const Entity*>(this));

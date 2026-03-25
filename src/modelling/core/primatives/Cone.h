@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <cmath>
 #include <memory>
 #include "../Entity.h"
 #include "../components/Material.h"
@@ -87,6 +88,20 @@ class Cone : public Entity {
                 hit.distance = t;
                 hit.point = ray.positionAt(t);
                 hit.normal = normal;
+                glm::vec3 localPoint = hit.point - position;
+                float u = atan2(localPoint.z, localPoint.x) / (2.0f * M_PI);
+                float v = (localPoint.y + height * 0.5f) / height;
+
+                if (glm::abs(localPoint.y) < height * 0.5f && localPoint.y > -height * 0.5f) {
+                    hit.uv = glm::vec2(u, v);
+                } else {
+                    float r = glm::length(glm::vec2(localPoint.x, localPoint.z)) / radius;
+                    float angle = atan2(localPoint.z, localPoint.x);
+                    hit.uv = glm::vec2(r * glm::cos(angle), r * glm::sin(angle)) * 0.5f + 0.5f;
+                }
+
+
+
                 hit.entity = const_cast<Cone*>(this);
                 hit.setFrontSurface(ray, hit.normal);
                 return true;

@@ -104,14 +104,11 @@ int main(int argc, char* argv[]) {
         glm::vec3(1.0f,1.0f,1.0f),3.0f,0.05f);
     scene.addLight(light);
 
-    auto f16 = loadObjectMesh("C:/Users/Lochlan Harvey/Desktop/MREdu/src/assets/objects/f16.obj",
-        glm::vec3(0.0f,1.5f,0.0f),2.0f,mat);
-
-
-    scene.addEntity(f16);
+    auto sphere = new Cone(glm::vec3(0.0f,2.5f,0.0f),2.0f,0.5f,mat);
+    scene.addEntity(sphere);
 
     Camera camera(
-        glm::vec3(0.0f, 3.5f, 6.0f),
+        glm::vec3(0.0f, 5.5f, 6.0f),
         glm::vec3(0.0f, 2.5f, 0.0f)
     );
 

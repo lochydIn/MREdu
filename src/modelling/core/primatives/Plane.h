@@ -13,18 +13,22 @@ class Plane : public Entity {
     Plane(const glm::vec3& position, const glm::vec3 normal, std::shared_ptr<Material> mat) :
     Entity(std::move(mat)), position(position),normal(normal) {}
 
-    bool intersect(const Ray& ray, Intersection& hit, float tMin, float tMax) const override {
+    bool intersect(const Ray& ray, Intersection& intersection, float tMin, float tMax) const override {
         // If intersecting ray is not parallel.
         if (const float denom = glm::dot(normal, ray.direction); glm::abs(glm::dot(normal, ray.direction)) > 0.0001f) {
 
             float t = glm::dot(position - ray.origin, normal) / denom;
 
             if (t > tMin && t < tMax) {
-                hit.point = ray.origin + t * ray.direction;
-                hit.normal = (denom < 0.0f) ? normal : -normal;
-                hit.distance = t;
-                hit.entity = const_cast<Plane*>(this);
-                hit.setFrontSurface(ray,hit.normal);
+                intersection.point = ray.origin + t * ray.direction;
+                intersection.normal = (denom < 0.0f) ? normal : -normal;
+                glm::vec3 local = intersection.point - position;
+                float tileSize = 1.0f;
+                intersection.uv.x = glm::fract(local.x / tileSize + 0.5f);
+                intersection.uv.y = glm::fract(local.y / tileSize + 0.5f);
+                intersection.distance = t;
+                intersection.entity = const_cast<Plane*>(this);
+                intersection.setFrontSurface(ray,intersection.normal);
                 return true;
             }
         }
