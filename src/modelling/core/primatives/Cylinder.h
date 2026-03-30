@@ -3,8 +3,11 @@
 //
 
 #pragma once
+#include <cmath>
+
 #include "glm/vec3.hpp"
 #include "../components/Transform.h"
+#include "../Entity.h"
 
 class Cylinder : public Entity {
     public:
@@ -72,19 +75,25 @@ class Cylinder : public Entity {
                     hit.normal = normal;
                     hit.point = ray.positionAt(t);
                     glm::vec3 localPoint = hit.point - position;
+                    float u = atan2(localPoint.z,localPoint.x) / (2 * M_PI);
+                    if (u > 0) {
+                        u += 1.0f;
+                    }
+                    hit.tangent = glm::vec3(-sin(u * 2 * M_PI),0, cos(u * 2 * M_PI));
+                    hit.bitangent = glm::cross(hit.normal, hit.tangent);
+
                     if (glm::abs(hit.normal.y) < 0.1f) {
-                        float u = atan2(localPoint.z,localPoint.x) / (2.0f * M_PI);
                         if (u < 0.0f) {
                             u += 1.0f;
                         }
                         float v = (localPoint.y + height * 0.5f) / height;
                         hit.uv = glm::vec2(u, v);
                     } else {
-                        float r = glm::length(glm::vec2(localPoint.x, localPoint.z)) / radius;
-                        float angle = atan2(localPoint.z,localPoint.x);
+                        const float r = glm::length(glm::vec2(localPoint.x, localPoint.z)) / radius;
+                        const float angle = atan2(localPoint.z,localPoint.x);
 
-                        float u = r * cos(angle) * 0.5f + 0.5f;
-                        float v = r * sin(angle) * 0.5f + 0.5f;
+                        const float u = r * std::cos(angle) * 0.5f + 0.5f;
+                        const float v = r * std::sin(angle) * 0.5f + 0.5f;
                         hit.uv = glm::vec2(u, v);
                     }
                     hit.entity = const_cast<Cylinder*>(this);

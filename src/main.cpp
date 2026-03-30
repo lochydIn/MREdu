@@ -1,26 +1,16 @@
 #include <chrono>
 #include <iostream>
-#include <random>
 #include <vector>
 #include <glad/glad.h>
 #include "../cmake-build-debug/_deps/glfw-src/include/GLFW/glfw3.h"
 #include "modelling/core/Scene.h"
 #include "modelling/core/Camera.h"
-#include "modelling/core/complex/Mesh.h"
 #include "modelling/core/complex/MeshLoader.h"
 #include "modelling/core/primatives/Sphere.h"
-#include "modelling/core/primatives/Plane.h"
 #include "modelling/core/lighting/simple/DirectionalLight.h"
 #include "modelling/core/lighting/simple/PointLight.h"
 #include "modelling/core/components/Material.h"
-#include "modelling/core/lighting/area/CuboidLight.h"
-#include "modelling/core/lighting/area/CylinderLight.h"
-#include "modelling/core/lighting/area/RectangleLight.h"
-#include "modelling/core/lighting/area/SphereLight.h"
 #include "modelling/core/primatives/Cone.h"
-#include "modelling/core/primatives/Cuboid.h"
-#include "modelling/core/primatives/Cylinder.h"
-#include "modelling/core/primatives/Sphere.h"
 #include "rendering/structs/RenderParams.h"
 #include "rendering/RayTracer.h"
 
@@ -57,7 +47,7 @@ bool checkShaderCompile(const GLuint shader, const char* name) {
     char infoLog[512];
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (!success) {
-        glGetShaderInfoLog(shader, 512, NULL, infoLog);
+        glGetShaderInfoLog(shader, 512, nullptr, infoLog);
         std::cout << "Shader compilation failed (" << name << "): " << infoLog << std::endl;
         return false;
     }
@@ -82,7 +72,7 @@ int main(int argc, char* argv[]) {
     }
     glfwMakeContextCurrent(window);
 
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
@@ -93,22 +83,45 @@ int main(int argc, char* argv[]) {
     // Scene Test Setup
     Scene scene;
 
-    auto brickTexture = std::make_shared<Texture>("C:/Users/Lochlan Harvey/Desktop/MREdu/src/assets/textures/rock_01_diff_4k.jpg");
+    auto brickAlbedo = std::make_shared<Texture>("src/assets/textures/Bricks101_1K-JPG_Color.jpg");
+    auto brickRoughness = std::make_shared<Texture>("src/assets/textures/Bricks101_1K-JPG_Roughness.jpg");
+    auto brickNormal = std::make_shared<Texture>("src/assets/textures/Bricks101_1K-JPG_NormalGL.jpg");
+    auto brickAO = std::make_shared<Texture>("src/assets/textures/Bricks101_1K-JPG_AmbientOcclusion.jpg");
 
-    auto mat = std::make_shared<Material>(glm::vec3(0.8f,0.8f,0.8f),0.3f,0.0f,
+    auto testMat = std::make_shared<Material>(glm::vec3(0.8f,0.8f,0.8f),0.3f,0.0f,
         0.0f,0.0f,0.0f,glm::vec3(0.0f));
-    mat->albedoMap = brickTexture;
+
+    testMat->albedoMap = brickAlbedo;
+    testMat->roughnessMap = brickRoughness;
+    testMat->normalMap = brickNormal;
+    testMat->aoMap = brickAO;
+
+    //auto testCarPaint = std::make_shared<Material>(glm::vec3(1.0f,0.2f,0.2f),
+     //   0.3f,1.0f,0.0,0,0.0f,glm::vec3(0.0f));
+    //testCarPaint->clearcoat = 1.0f;
+    //testCarPaint->clearcoatRoughness = 0.5f;
 
 
-    auto light = new DirectionalLight(glm::vec3(0,-1,-1),
-        glm::vec3(1.0f,1.0f,1.0f),3.0f,0.05f);
+    auto velvet = std::make_shared<Material>(glm::vec3(0.7f,0.2f,0.3f),
+        0.8f,0.0f,0.0f,0.0f,0.0f,glm::vec3(0.0f));
+    velvet->sheen = 1.0f;
+    velvet->sheenColour = glm::vec3(0.9f,0.3f,0.4f);
+
+
+
+    auto light = new DirectionalLight(glm::vec3(0,-1.0,-1.0f),
+        glm::vec3(1.0f,1.0f,1.0f),3.0f,0.01f);
     scene.addLight(light);
 
-    auto sphere = new Cone(glm::vec3(0.0f,2.5f,0.0f),2.0f,0.5f,mat);
+    auto light2 = new PointLight(glm::vec3(0,4,-2.0f),
+        glm::vec3(1.0f,1.0f,1.0f),1.0f,0.00f);
+    scene.addLight(light2);
+
+    auto sphere = new Sphere(2.0f,glm::vec3(0.0f,2.5f,0.0f),velvet);
     scene.addEntity(sphere);
 
     Camera camera(
-        glm::vec3(0.0f, 5.5f, 6.0f),
+        glm::vec3(0.0f, 2.5f, 6.0f),
         glm::vec3(0.0f, 2.5f, 0.0f)
     );
 
@@ -116,9 +129,9 @@ int main(int argc, char* argv[]) {
     RenderParams renderParams;
 
     // Quality Settings. (Anti-Aliasing)
-    renderParams.primarySamples = 1;
+    renderParams.primarySamples = 16;
     renderParams.reflectionSamples = 1;
-    renderParams.shadowSamples = 4;
+    renderParams.shadowSamples = 16;
     renderParams.maxDepth = 1;
 
     // Shadow Settings
@@ -188,13 +201,13 @@ int main(int argc, char* argv[]) {
 
     // Create and compile vertex shader
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
     glCompileShader(vertexShader);
     if (!checkShaderCompile(vertexShader, "vertex shader")) return -1;
 
     // Create and compile fragment shader
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
     glCompileShader(fragmentShader);
     if (!checkShaderCompile(fragmentShader, "fragment shader")) return -1;
 
@@ -209,7 +222,7 @@ int main(int argc, char* argv[]) {
     char infoLog[512];
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
     if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        glGetProgramInfoLog(shaderProgram, 512, nullptr, infoLog);
         std::cout << "Shader linking failed: " << infoLog << std::endl;
         return -1;
     }
@@ -252,7 +265,7 @@ int main(int argc, char* argv[]) {
         // Draw the quad with our pre-rendered texture
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
         // Swap buffers and poll events (this will be fast now!)
         glfwSwapBuffers(window);

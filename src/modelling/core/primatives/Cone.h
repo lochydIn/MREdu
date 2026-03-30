@@ -90,6 +90,11 @@ class Cone : public Entity {
                 hit.normal = normal;
                 glm::vec3 localPoint = hit.point - position;
                 float u = atan2(localPoint.z, localPoint.x) / (2.0f * M_PI);
+                if (u > 0) {
+                    u += 1.0f;
+                }
+                hit.tangent = glm::vec3(-sin(u * 2 * M_PI),0,cos(u * 2 * M_PI));
+                hit.bitangent = glm::cross(hit.normal, hit.tangent);
                 float v = (localPoint.y + height * 0.5f) / height;
 
                 if (glm::abs(localPoint.y) < height * 0.5f && localPoint.y > -height * 0.5f) {

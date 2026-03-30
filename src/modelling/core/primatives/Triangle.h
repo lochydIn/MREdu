@@ -13,6 +13,7 @@ class Triangle : public Entity {
             const std::shared_ptr<Material>& material) :
             Entity(material),v0(v0),v1(v1),v2(v2),n0(n0),n1(n1),n2(n2),uv0(uv0),uv1(uv1),uv2(uv2) {
             normal = glm::normalize(glm::cross(v1 - v0, v2 - v0));
+            computeTangents();
         }
 
         bool intersect(const Ray& ray, Intersection& hit, const float tMin, const float tMax) const override {
@@ -38,7 +39,7 @@ class Triangle : public Entity {
             }
 
             const glm::vec3 originCrossEdgeOne = glm::cross(originToV0, edge1);
-            float v = invDeterminant * glm::dot(ray.direction, originCrossEdgeOne);
+            const float v = invDeterminant * glm::dot(ray.direction, originCrossEdgeOne);
 
             if (v < 0.0f || u + v > 1.0f) {
                 return false;
@@ -57,6 +58,11 @@ class Triangle : public Entity {
                     hit.normal = interpolatedNormal;
                 }
                 hit.uv = w * uv0 + u * uv1 + v * uv2;
+                hit.tangent = glm::normalize(w * tangent0 + u * tangent1 + v * tangent2);
+                hit.bitangent = glm::normalize(w * bitangent0 + u * bitangent1 + v * bitangent2);
+
+                hit.tangent = glm::normalize(hit.tangent - glm::dot(hit.tangent,hit.normal) * hit.normal);
+                hit.bitangent = glm::cross(hit.normal, hit.tangent);
                 hit.entity = const_cast<Triangle*>(this);
                 hit.setFrontSurface(ray,hit.normal);
                 return true;
@@ -71,9 +77,34 @@ class Triangle : public Entity {
             return bB;
         }
 
+        void computeTangents() {
+            const glm::vec3 edge1 = v1 - v2;
+            const glm::vec3 edge2 = v2 - v0;
+
+            const glm::vec2 dUV1 = uv1 - uv0;
+            const glm::vec2 dUV2 = uv2 - uv0;
+            const float f = 1.0f / (dUV1.x * dUV2.y - dUV2.x * dUV1.y);
+            glm::vec3 tangent;
+            tangent.x = f * (dUV2.y * edge1.x - dUV1.y * edge2.x);
+            tangent.y = f * (dUV2.y * edge1.y - dUV1.y * edge2.y);
+            tangent.z = f * (dUV2.y * edge1.z - dUV1.y * edge2.z);
+            tangent = glm::normalize(tangent);
+
+            glm::vec3 bitangent;
+            bitangent.x = f * (-dUV2.x * edge1.x - dUV1.x * edge2.x);
+            bitangent.y = f * (-dUV2.x * edge1.y - dUV1.x * edge2.y);
+            bitangent.z = f * (-dUV2.x * edge1.z - dUV1.x * edge2.z);
+            bitangent = glm::normalize(bitangent);
+
+            tangent0 = tangent1 = tangent2 = tangent;
+            bitangent0 = bitangent1 = bitangent2 = bitangent;
+        }
+
     private:
         glm::vec3 v0, v1, v2;
         glm::vec3 n0, n1, n2;
         glm::vec2 uv0, uv1, uv2;
+        glm::vec3 tangent0, tangent1, tangent2;
+        glm::vec3 bitangent0, bitangent1, bitangent2;
         glm::vec3 normal{};
 };

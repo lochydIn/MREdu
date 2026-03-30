@@ -15,7 +15,7 @@ public:
     Sphere(const Sphere&) = delete;
     Sphere& operator=(const Sphere&) = delete;
 
-    bool intersect(const Ray& ray, Intersection& intersection, const float tMin, const float tMax) const override {
+    bool intersect(const Ray& ray, Intersection& hit, const float tMin, const float tMax) const override {
         const float a = dot(ray.direction , ray.direction);
         const float b = 2 * dot(ray.origin - center, ray.direction);
         const float c = dot(ray.origin - center, ray.origin -center) - radius * radius;
@@ -26,13 +26,17 @@ public:
             float t = (-b - std::sqrt(discriminant)) / (2 * a);
 
             if (t > 0) { // If the intersection is within bounds.
-                intersection.point = ray.origin  + ray.direction * t; // Set the intersection point.
-                const glm::vec3 outwardNormal = glm::normalize(intersection.point - center);
-                intersection.uv.x = 0.5f + atan2(outwardNormal.z, outwardNormal.x) / (2 * M_PI);
-                intersection.uv.y = 0.5f - asin(outwardNormal.y) / M_PI;
-                intersection.setFrontSurface(ray, outwardNormal);
-                intersection.distance = t;
-                intersection.entity = const_cast<Entity*>(dynamic_cast<const Entity*>(this));
+                hit.point = ray.origin  + ray.direction * t; // Set the intersection point.
+                const glm::vec3 pNormal = glm::normalize(hit.point - center);
+                const float phi = atan2(pNormal.z, pNormal.x);
+                hit.tangent = glm::vec3(-std::sin(phi), 0, std::cos(phi));
+                hit.bitangent = glm::cross(hit.normal, hit.tangent);
+                const glm::vec3 outwardNormal = glm::normalize(hit.point - center);
+                hit.uv.x = 0.5f + atan2(outwardNormal.z, outwardNormal.x) / (2 * M_PI);
+                hit.uv.y = 0.5f - asin(outwardNormal.y) / M_PI;
+                hit.setFrontSurface(ray, outwardNormal);
+                hit.distance = t;
+                hit.entity = const_cast<Entity*>(dynamic_cast<const Entity*>(this));
                 return true;
             }
         }

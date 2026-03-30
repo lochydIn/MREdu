@@ -16,8 +16,7 @@ class Cuboid : public Entity {
 
         Cuboid& operator = (const Cuboid&) = delete;
 
-        bool intersect(const Ray& ray, Intersection& hit, float tMin, float tMax) const override
-        {
+        bool intersect(const Ray& ray, Intersection& hit, float tMin, float tMax) const override {
             glm::vec3 boxMin = position + min;
             glm::vec3 boxMax = position + max;
 
@@ -58,8 +57,10 @@ class Cuboid : public Entity {
             hit.point = ray.positionAt(t);
             hit.entity = const_cast<Cuboid*>(this);
 
+
             glm::vec3 localPoint = hit.point - position;
             glm::vec3 norm(0);
+            hit.normal = glm::normalize(norm);
             glm::vec2 uv;
             glm::vec3 size = max - min;
 
@@ -70,34 +71,47 @@ class Cuboid : public Entity {
                 uv = glm::vec2(
                     (localPoint.z - min.z) / size.z,
                     (localPoint.y - min.y) / size.y);
+                hit.tangent = glm::vec3(0, 0, 1);
+                hit.bitangent = glm::vec3(0, 1, 0);
             } else if (std::abs(localPoint.x - max.x) < epsilon) {
                 norm = glm::vec3(1,0,0);
                 uv = glm::vec2(
                     1.0f - (localPoint.z - min.z) / size.z,
                     (localPoint.y - min.y) / size.y);
+                hit.tangent = glm::vec3(0, 0, 1);
+                hit.bitangent = glm::vec3(0, 1, 0);
             } else if (std::abs(localPoint.y - min.y) < epsilon) {
                 norm = glm::vec3(0,-1,0);
                 uv = glm::vec2(
                     (localPoint.x - min.x) / size.x,
                     (localPoint.z - min.z) / size.z);
+                hit.tangent = glm::vec3(1, 0, 0);
+                hit.bitangent = glm::vec3(0, 0, 1);
             } else if (std::abs(localPoint.y - max.y) < epsilon) {
                 norm = glm::vec3(0,1,0);
                 uv = glm::vec2(
                     1.0f - (localPoint.x - min.x) / size.x,
                     (localPoint.z - min.z) / size.z);
+                hit.tangent = glm::vec3(1, 0, 0);
+                hit.bitangent = glm::vec3(0, 0, 1);
             } else if (std::abs(localPoint.z - min.z) < epsilon) {
                 norm = glm::vec3(0,0,-1);
                 uv = glm::vec2(
                     (localPoint.x - min.x) / size.x,
                     (localPoint.y - min.y) / size.y);
+                hit.tangent = glm::vec3(1, 0, 0);
+                hit.bitangent = glm::vec3(0, 1, 0);
             } else if (std::abs(localPoint.z - max.z) < epsilon) {
                 norm = glm::vec3(0,0,1);
                 uv = glm::vec2(
                     1.0f - (localPoint.x - min.x) / size.x,
                     (localPoint.y - min.y) / size.y);
+                hit.tangent = glm::vec3(1, 0, 0);
+                hit.bitangent = glm::vec3(0, 1, 0);
             }
             hit.uv = uv;
-            hit.normal = glm::normalize(norm);
+            hit.tangent = glm::normalize(hit.tangent - glm::dot(hit.tangent, hit.normal) * hit.normal);
+            hit.bitangent = glm::cross(hit.normal, hit.tangent);
             hit.setFrontSurface(ray, hit.normal);
 
             return true;
