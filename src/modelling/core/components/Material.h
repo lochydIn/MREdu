@@ -29,8 +29,6 @@ class Material : public Component {
         float anisotropyRotation;
         float sheen;
         glm::vec3 sheenColour;
-        float subsurface;
-        glm::vec3 subsurfaceColour;
 
         // Texture Maps and Controls
         float roughnessMapIntensity;
@@ -69,8 +67,6 @@ class Material : public Component {
             anisotropyRotation(0.0f),
             sheen(0.0f),
             sheenColour(glm::vec3(1.0f)),
-            subsurface(0.0f),
-            subsurfaceColour(0.0f),
             roughnessMapIntensity(0.0f),
             metallicMapIntensity(0.0f),
             normalMapIntensity(0.0f),
