@@ -22,7 +22,7 @@ public:
         width(width),
         height(height),
         position(position),
-        target(target) {}
+        target(target){}
 
 
     // Deconstructor
@@ -34,7 +34,7 @@ public:
         return glm::lookAt(position,target,glm::vec3(0.0f,1.0f,0.0f));
     }
     // Get the ray from the camera's position to the given pixel u,v.
-    Ray getRay(const int& px, const int& py) const {
+    [[nodiscard]] Ray getRay(const int& px, const int& py) const {
 
         const float u = (2.0f * px / width) - 1.0f;
         const float v = 1.0f - (2.0f * py / height);
@@ -72,6 +72,11 @@ public:
         return fov;
     }
 
+    void setAspect(const float& aspectRatio, int m_width, int m_height) {
+        aspect = aspectRatio;
+        width = m_width;
+        height = m_height;
+    }
 
 private:
     float fov;

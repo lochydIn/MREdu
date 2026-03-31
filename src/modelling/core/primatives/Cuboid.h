@@ -109,10 +109,10 @@ class Cuboid : public Entity {
                 hit.tangent = glm::vec3(1, 0, 0);
                 hit.bitangent = glm::vec3(0, 1, 0);
             }
+            hit.setFrontSurface(ray, hit.normal);
             hit.uv = uv;
             hit.tangent = glm::normalize(hit.tangent - glm::dot(hit.tangent, hit.normal) * hit.normal);
             hit.bitangent = glm::cross(hit.normal, hit.tangent);
-            hit.setFrontSurface(ray, hit.normal);
 
             return true;
         }

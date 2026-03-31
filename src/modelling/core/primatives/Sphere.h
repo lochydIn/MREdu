@@ -29,12 +29,12 @@ public:
                 hit.point = ray.origin  + ray.direction * t; // Set the intersection point.
                 const glm::vec3 pNormal = glm::normalize(hit.point - center);
                 const float phi = atan2(pNormal.z, pNormal.x);
+                const glm::vec3 outwardNormal = glm::normalize(hit.point - center);
+                hit.setFrontSurface(ray, outwardNormal);
                 hit.tangent = glm::vec3(-std::sin(phi), 0, std::cos(phi));
                 hit.bitangent = glm::cross(hit.normal, hit.tangent);
-                const glm::vec3 outwardNormal = glm::normalize(hit.point - center);
                 hit.uv.x = 0.5f + atan2(outwardNormal.z, outwardNormal.x) / (2 * M_PI);
                 hit.uv.y = 0.5f - asin(outwardNormal.y) / M_PI;
-                hit.setFrontSurface(ray, outwardNormal);
                 hit.distance = t;
                 hit.entity = const_cast<Entity*>(dynamic_cast<const Entity*>(this));
                 return true;

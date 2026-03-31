@@ -89,6 +89,7 @@ class Cone : public Entity {
                 hit.point = ray.positionAt(t);
                 hit.normal = normal;
                 glm::vec3 localPoint = hit.point - position;
+                hit.setFrontSurface(ray, hit.normal);
                 float u = atan2(localPoint.z, localPoint.x) / (2.0f * M_PI);
                 if (u > 0) {
                     u += 1.0f;
@@ -105,10 +106,7 @@ class Cone : public Entity {
                     hit.uv = glm::vec2(r * glm::cos(angle), r * glm::sin(angle)) * 0.5f + 0.5f;
                 }
 
-
-
                 hit.entity = const_cast<Cone*>(this);
-                hit.setFrontSurface(ray, hit.normal);
                 return true;
             }
 

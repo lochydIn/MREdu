@@ -22,6 +22,7 @@ class Plane : public Entity {
             if (t > tMin && t < tMax) {
                 hit.point = ray.origin + t * ray.direction;
                 hit.normal = (denom < 0.0f) ? normal : -normal;
+                hit.setFrontSurface(ray,hit.normal);
                 hit.tangent = glm::vec3(1,0,0);
                 hit.bitangent = glm::vec3(0,0,1);
                 hit.bitangent = glm::cross(hit.normal, hit.tangent);
@@ -31,7 +32,6 @@ class Plane : public Entity {
                 hit.uv.y = glm::fract(local.y / tileSize + 0.5f);
                 hit.distance = t;
                 hit.entity = const_cast<Plane*>(this);
-                hit.setFrontSurface(ray,hit.normal);
                 return true;
             }
         }

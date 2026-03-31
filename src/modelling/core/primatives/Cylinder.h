@@ -79,6 +79,7 @@ class Cylinder : public Entity {
                     if (u > 0) {
                         u += 1.0f;
                     }
+                    hit.setFrontSurface(ray, hit.normal);
                     hit.tangent = glm::vec3(-sin(u * 2 * M_PI),0, cos(u * 2 * M_PI));
                     hit.bitangent = glm::cross(hit.normal, hit.tangent);
 
@@ -97,7 +98,6 @@ class Cylinder : public Entity {
                         hit.uv = glm::vec2(u, v);
                     }
                     hit.entity = const_cast<Cylinder*>(this);
-                    hit.setFrontSurface(ray, hit.normal);
                     return true;
                 }
             }

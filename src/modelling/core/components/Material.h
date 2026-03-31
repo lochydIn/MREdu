@@ -83,10 +83,9 @@ class Material : public Component {
         }
 
         [[nodiscard]] float getRoughness(const glm::vec2& uv) const {
-            float base = roughness;
+            const float base = roughness;
             if (roughnessMap) {
-                const float mapVal = roughnessMap->sample(uv.x,uv.y).r;
-                base = glm::mix(base,mapVal,roughnessMapIntensity);
+                return roughnessMap->sample(uv.x,uv.y).r;
             }
             return base;
         }
