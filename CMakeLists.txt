@@ -30,12 +30,13 @@ add_executable(MREdu
         src/main.cpp
         src/glad.c
         src/modelling/core/Entity.h
+        src/modelling/core/components/Component.h
         src/modelling/core/Scene.h
         src/modelling/core/Camera.h
-        src/modelling/core/structs/Transform.h
+        src/modelling/core/components/Transform.h
         src/rendering/structs/Ray.h
         src/rendering/structs/Intersection.h
-        src/modelling/core/properties/Material.h
+        src/modelling/core/components/Material.h
         src/modelling/core/lighting/simple/DirectionalLight.h
         src/rendering/Shader.h
         src/rendering/Shader.cpp
@@ -50,7 +51,7 @@ add_executable(MREdu
         src/rendering/structs/RenderParams.h
         src/modelling/core/lighting/area/RectangleLight.h
         src/modelling/core/lighting/LightSample.h
-        src/modelling/core/structs/BoundingBox.h
+        src/modelling/core/BoundingBox.h
         src/modelling/core/BVH.h
         src/modelling/core/primatives/Cuboid.h
         src/modelling/core/primatives/Cone.h
@@ -62,11 +63,9 @@ add_executable(MREdu
         src/modelling/core/complex/Mesh.h
         src/modelling/core/complex/MeshLoader.h
         src/modelling/core/complex/MeshLoader.cpp
-        src/modelling/core/properties/Texture.h
-        src/modelling/core/properties/stb_image.h
-        src/modelling/core/properties/Texture.cpp
-        src/modelling/core/structs/Transform.h
-        src/modelling/core/structs/Transform.h
+        src/modelling/core/components/Texture.h
+        src/modelling/core/components/stb_image.h
+        src/modelling/core/components/Texture.cpp
 )
 
 set(IMGUI_SOURCES

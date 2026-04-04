@@ -5,7 +5,7 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include "structs/BoundingBox.h"
+#include "BoundingBox.h"
 #include "Entity.h"
 #include "primatives/Sphere.h"
 

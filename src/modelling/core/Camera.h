@@ -2,6 +2,7 @@
 // Created by Lochlan Harvey on 25/01/2026.
 //
 #pragma once
+#include "components/Component.h"
 #include "glm/vec3.hpp"
 #include "glm/ext/matrix_transform.hpp"
 

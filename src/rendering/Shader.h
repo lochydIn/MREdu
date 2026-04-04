@@ -5,7 +5,7 @@
 #pragma once
 #include "structs/Intersection.h"
 #include "structs/RenderParams.h"
-#include "../modelling/core/properties/Material.h"
+#include "../modelling/core/components/Material.h"
 #include "structs/Ray.h"
 
 class Scene;
