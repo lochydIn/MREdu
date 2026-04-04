@@ -31,10 +31,11 @@ class Mesh : public Entity {
             }
         }
 
-        bool intersect(const Ray& ray, Intersection& hit, const float tMin, const float tMax) const override {
-            const Ray localRay(ray.origin - position, ray.direction);
+        bool intersect(const Ray& worldRay, Intersection& hit, const float tMin, const float tMax) const override {
+            const Ray ray = worldToObject(worldRay);
 
-            if (meshBVH->intersect(localRay,hit)) {
+            if (meshBVH->intersect(ray,hit)) {
+                objectToWorld(hit);
                 hit.point = hit.point + position;
                 return true;
             }

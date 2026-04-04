@@ -10,7 +10,7 @@
 #include "modelling/core/primatives/Sphere.h"
 #include "modelling/core/lighting/simple/DirectionalLight.h"
 #include "modelling/core/lighting/simple/PointLight.h"
-#include "modelling/core/components/Material.h"
+#include "modelling/core/properties/Material.h"
 #include "modelling/core/primatives/Cone.h"
 #include "rendering/structs/RenderParams.h"
 #include "rendering/RayTracer.h"
@@ -29,9 +29,9 @@ struct QualityPreset {
     int maxDepth;
 };
 
-constexpr QualityPreset Interactive = {1,4,1,3};
-constexpr QualityPreset Preview = {4,16,4,6};
-constexpr QualityPreset Production = {16,64,8,12};
+constexpr QualityPreset Interactive = {1,1,1,2};
+constexpr QualityPreset Preview = {32,64,4,6};
+constexpr QualityPreset Production = {4,4,4,4};
 
 int currentWidth = PREVIEW_WIDTH;
 int currentHeight = PREVIEW_HEIGHT;
@@ -187,50 +187,38 @@ int main(int argc, char* argv[]) {
     renderParams.jitter = 1.0f;
 
     //Technical Settings
-    renderParams.backgroundColor = glm::vec3(0.3f, 0.3f, 0.6f);
+    renderParams.backgroundColor = glm::vec3(0.9f, 0.9f, 0.9f);
     renderParams.haltonBases = {2,3};
+    renderParams.epsilon = 0.01f;
 
     // Scene Setup
     Scene scene;
-    auto brickAlbedo = std::make_shared<Texture>("src/assets/textures/Bricks101_1K-JPG_Color.jpg");
-    auto brickRoughness = std::make_shared<Texture>("src/assets/textures/Bricks101_1K-JPG_Roughness.jpg");
-    auto brickNormal = std::make_shared<Texture>("src/assets/textures/Bricks101_1K-JPG_NormalGL.jpg");
-    auto brickAO = std::make_shared<Texture>("src/assets/textures/Bricks101_1K-JPG_AmbientOcclusion.jpg");
-
-    auto testMat = std::make_shared<Material>(glm::vec3(0.8f,0.8f,0.8f),0.7f,0.0f,
-        0.0f,0.0f,0.0f,glm::vec3(0.0f));
-
-    testMat->albedoMap = brickAlbedo;
-    testMat->roughnessMap = brickRoughness;
-    testMat->normalMap = brickNormal;
-    testMat->aoMap = brickAO;
-
-    auto testCarPaint = std::make_shared<Material>(glm::vec3(1.0f,0.2f,0.2f),
-        0.3f,1.0f,0.0,0,0.0f,glm::vec3(0.0f));
-    testCarPaint->clearcoat = 1.0f;
-    testCarPaint->clearcoatRoughness = 0.5f;
-
     auto velvet = std::make_shared<Material>(glm::vec3(0.7f,0.2f,0.3f),
         0.8f,0.0f,0.0f,0.0f,0.0f,glm::vec3(0.0f));
     velvet->sheen = 1.0f;
     velvet->sheenColour = glm::vec3(0.9f,0.3f,0.4f);
 
-    auto brushedMetal = std::make_shared<Material>();
-    brushedMetal->colour = glm::vec3(0.9f,0.8f,0.6f);
-    brushedMetal->roughness = 0.2f;
-    brushedMetal->metallic = 1.0f;
-    brushedMetal->anisotropy = 0.9f;
-    brushedMetal->anisotropyRotation = 90.0f;
+    auto greyFloor = std::make_shared<Material>(glm::vec3(1.0f,0.9f,0.8f),0.3);
 
-
-    auto light = new DirectionalLight(glm::vec3(0,-1.0,-1.0f),
-        glm::vec3(1.0f,1.0f,1.0f),3.0f,0.01f);
+    auto light = new DirectionalLight(glm::vec3(-1.0f,-1.0f,-1.0f),
+        glm::vec3(1.0f,1.0f,1.0f),5.0f,0.05f);
     scene.addLight(light);
 
-    Mesh* bunny = loadObjectMesh("src/assets/objects/buddha.obj",
-        glm::vec3(0.0f,0.0f,0.0f),20.0f, velvet);
+    auto plane = new Plane(glm::vec3(0.0f,0.0f,0.0f),glm::vec3(0.0f,1.0f,0.0f),greyFloor);
+    auto plane2 = new Plane(glm::vec3(0.0f,0.0f,-30.0f),glm::vec3(0.0f,0.0f,1.0f),greyFloor);
 
-    scene.addEntity(bunny);
+    Mesh* bunny = loadObjectMesh("src/assets/objects/bunny.obj",
+        glm::vec3(0.0f,0.0f,0.0f),15.0f, velvet);
+
+    auto* sphere = new Sphere(2.0f,glm::vec3(0.0f,2.5f,0.0f),velvet);
+    Transform t;
+    t.position = glm::vec3(2.0f,0.0f,0.0f);
+
+    sphere->setTransform(t);
+    scene.addEntity(plane);
+    scene.addEntity(plane2);
+    scene.addEntity(sphere);
+    //scene.addEntity(bunny);
     Camera camera(
         glm::vec3(0.0f, 2.5f, 6.0f),
         glm::vec3(0.0f, 2.5f, 0.0f),60,currentWidth,currentHeight
