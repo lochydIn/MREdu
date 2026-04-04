@@ -3,13 +3,12 @@
 //
 
 #pragma once
-#include "Component.h"
 #include "Texture.h"
 #include <memory>
 #include "glm/vec3.hpp"
 #include "glm/vec2.hpp"
 
-class Material : public Component {
+class Material {
 
     public:
         // General Properties

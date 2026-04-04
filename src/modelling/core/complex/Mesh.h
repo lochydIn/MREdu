@@ -7,9 +7,8 @@
 
 class Mesh : public Entity {
     public:
-        Mesh(const glm::vec3& position, const std::vector<Triangle*>& triangles,
-            const std::shared_ptr<Material>& material)
-            : Entity(material), position(position),triangles(triangles) {
+        Mesh(const std::vector<Triangle*>& triangles, const std::shared_ptr<Material>& material)
+            : Entity(material),triangles(triangles) {
 
             std::vector<Entity*> triangleEntities;
             for (const auto triangle : triangles) {
@@ -21,8 +20,6 @@ class Mesh : public Entity {
             for (const auto& triangle : triangles) {
                 local.expand(triangle->getBoundingBox());
             }
-
-            world = BoundingBox(local.min + position,local.max + position);
         }
 
         ~Mesh() override{
@@ -32,24 +29,37 @@ class Mesh : public Entity {
         }
 
         bool intersect(const Ray& ray, Intersection& hit, const float tMin, const float tMax) const override {
-            const Ray localRay(ray.origin - position, ray.direction);
-
-            if (meshBVH->intersect(localRay,hit)) {
-                hit.point = hit.point + position;
+            const Ray localRay = rayToObjectSpace(ray);
+            if (meshBVH->intersect(localRay, hit)) {
+                objectIntersectionToWorldSpace(hit);
                 return true;
             }
             return false;
         }
 
         [[nodiscard]] BoundingBox getBoundingBox() const override {
-            return world;
+            const glm::mat4 matrix = transform.getMatrix();
+            glm::vec3 vertices[8];
+            for (int i = 0; i < 8; i++) {
+                glm::vec3 vertex(
+                    (i & 1) ? local.max.x : local.min.x,
+                    (i & 2) ? local.max.y : local.min.y,
+                    (i & 4) ? local.max.z : local.min.z);
+                vertices[i] = glm::vec3(matrix * glm::vec4(vertex,1.0f));
+            }
+            glm::vec3 worldMin = vertices[0];
+            glm::vec3 worldMax = vertices[0];
+            for (int i = 1; i < 8; i++) {
+                worldMin = glm::min(worldMin, vertices[i]);
+                worldMax = glm::max(worldMax, vertices[i]);
+            }
+            const auto bB = BoundingBox(worldMin,worldMax);
+            return bB;
         }
 
 
     private:
-        glm::vec3 position;
         std::vector<Triangle*> triangles;
         std::unique_ptr<BVH> meshBVH;
         BoundingBox local;
-        BoundingBox world;
 };

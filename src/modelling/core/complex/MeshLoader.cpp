@@ -9,7 +9,7 @@
 #include <iostream>
 #include "../primatives/Triangle.h"
 
-Mesh* loadObjectMesh(const std::string& fileName, const glm::vec3& position, float scale, const std::shared_ptr<Material>& material) {
+Mesh* loadObjectMesh(const std::string& fileName, const std::shared_ptr<Material>& material) {
     tinyobj::attrib_t attr;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
@@ -42,9 +42,9 @@ Mesh* loadObjectMesh(const std::string& fileName, const glm::vec3& position, flo
                 tinyobj::index_t idx = shape.mesh.indices[index_offset + v];
 
                 //Position
-                float vx = attr.vertices[3 * idx.vertex_index + 0] * scale;
-                float vy = attr.vertices[3 * idx.vertex_index + 1] * scale;
-                float vz = attr.vertices[3 * idx.vertex_index + 2]* scale;
+                float vx = attr.vertices[3 * idx.vertex_index + 0] * 15.0f;
+                float vy = attr.vertices[3 * idx.vertex_index + 1] * 15.0f;
+                float vz = attr.vertices[3 * idx.vertex_index + 2] * 15.0f;
                 auto vertex = glm::vec3(vx,vy,vz);
                 faceVertices.emplace_back(vertex);
                 //Vertex Normals
@@ -54,6 +54,7 @@ Mesh* loadObjectMesh(const std::string& fileName, const glm::vec3& position, flo
                     float nz = attr.normals[3 * idx.normal_index + 2];
                     faceNormals.emplace_back(nx, ny, nz);
                 }
+                //UVs
                 if (hasUVs && idx.texcoord_index >= 0) {
                     float tx = attr.texcoords[2 * idx.texcoord_index + 0];
                     float ty = attr.texcoords[2 * idx.texcoord_index + 1];
@@ -179,5 +180,5 @@ Mesh* loadObjectMesh(const std::string& fileName, const glm::vec3& position, flo
         }
     }
     std::cout << "Loaded " << triangles.size() << " triangles from" << fileName << std::endl;
-    return new Mesh(position,triangles,material);
+    return new Mesh(triangles,material);
 }

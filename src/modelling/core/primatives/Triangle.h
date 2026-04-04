@@ -78,7 +78,7 @@ class Triangle : public Entity {
         }
 
         void computeTangents() {
-            const glm::vec3 edge1 = v1 - v2;
+            const glm::vec3 edge1 = v1 - v0;
             const glm::vec3 edge2 = v2 - v0;
 
             const glm::vec2 dUV1 = uv1 - uv0;
@@ -91,9 +91,9 @@ class Triangle : public Entity {
             tangent = glm::normalize(tangent);
 
             glm::vec3 bitangent;
-            bitangent.x = f * (-dUV2.x * edge1.x - dUV1.x * edge2.x);
-            bitangent.y = f * (-dUV2.x * edge1.y - dUV1.x * edge2.y);
-            bitangent.z = f * (-dUV2.x * edge1.z - dUV1.x * edge2.z);
+            bitangent.x = f * (-dUV2.x * edge1.x + dUV1.x * edge2.x);
+            bitangent.y = f * (-dUV2.x * edge1.y + dUV1.x * edge2.y);
+            bitangent.z = f * (-dUV2.x * edge1.z + dUV1.x * edge2.z);
             bitangent = glm::normalize(bitangent);
 
             tangent0 = tangent1 = tangent2 = tangent;

@@ -12,15 +12,18 @@
 #include "modelling/core/lighting/simple/PointLight.h"
 #include "modelling/core/components/Material.h"
 #include "modelling/core/primatives/Cone.h"
+#include "modelling/core/primatives/Cylinder.h"
 #include "rendering/structs/RenderParams.h"
 #include "rendering/RayTracer.h"
 
 
 Camera* g_camera = nullptr;
-constexpr int FULL_WIDTH = 960;
-constexpr int FULL_HEIGHT = 720;
-constexpr int PREVIEW_WIDTH = 480;
-constexpr int PREVIEW_HEIGHT = 360;
+constexpr int PRODUCTION_WIDTH = 1920;
+constexpr int PRODUCTION_HEIGHT = 1080;
+constexpr int PREVIEW_WIDTH = 1280;
+constexpr int PREVIEW_HEIGHT = 720;
+constexpr int INTERACTIVE_WIDTH = 480;
+constexpr int INTERACTIVE_HEIGHT = 360;
 
 struct QualityPreset {
     int pSamples;
@@ -29,13 +32,13 @@ struct QualityPreset {
     int maxDepth;
 };
 
-constexpr QualityPreset Interactive = {1,4,1,3};
-constexpr QualityPreset Preview = {4,16,4,6};
-constexpr QualityPreset Production = {16,64,8,12};
+constexpr QualityPreset INTERACTIVE = {1,1,1,3};
+constexpr QualityPreset PREVIEW = {4,64,4,6};
+constexpr QualityPreset PRODUCTION = {16,64,8,12};
 
-int currentWidth = PREVIEW_WIDTH;
-int currentHeight = PREVIEW_HEIGHT;
-QualityPreset currentQuality = Interactive;
+int currentWidth = INTERACTIVE_WIDTH;
+int currentHeight = INTERACTIVE_HEIGHT;
+QualityPreset currentQuality = INTERACTIVE;
 bool render = true;
 
 void framebuffer_size_callback(GLFWwindow* window, const int width, const int height) {
@@ -47,9 +50,9 @@ void key_callback(GLFWwindow* window, const int key, int scancode, const int act
     if (action == GLFW_PRESS)
     {
         if (key == GLFW_KEY_I) {
-            currentWidth = PREVIEW_WIDTH;
-            currentHeight = PREVIEW_HEIGHT;
-            currentQuality = Interactive;
+            currentWidth = INTERACTIVE_WIDTH;
+            currentHeight = INTERACTIVE_HEIGHT;
+            currentQuality = INTERACTIVE;
             if (g_camera) {
                 g_camera->setAspect(static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
                     currentWidth,currentHeight);
@@ -59,7 +62,7 @@ void key_callback(GLFWwindow* window, const int key, int scancode, const int act
         } else if (key == GLFW_KEY_P) {
             currentWidth = PREVIEW_WIDTH;
             currentHeight = PREVIEW_HEIGHT;
-            currentQuality = Preview;
+            currentQuality = PREVIEW;
             if (g_camera) {
                 g_camera->setAspect(static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
                     currentWidth,currentHeight);
@@ -67,9 +70,9 @@ void key_callback(GLFWwindow* window, const int key, int scancode, const int act
             }
 
         } else if (key == GLFW_KEY_F) {
-            currentWidth = FULL_WIDTH;
-            currentHeight = FULL_HEIGHT;
-            currentQuality = Production;
+            currentWidth = PRODUCTION_WIDTH;
+            currentHeight = PRODUCTION_HEIGHT;
+            currentQuality = PRODUCTION;
             if (g_camera) {
                 g_camera->setAspect(static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
                     currentWidth,currentHeight);
@@ -143,7 +146,7 @@ int main(int argc, char* argv[]) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(FULL_WIDTH, FULL_HEIGHT,
+    GLFWwindow* window = glfwCreateWindow(PRODUCTION_WIDTH, PRODUCTION_HEIGHT,
         "Viewport", nullptr, nullptr);
 
     if (window == nullptr) {
@@ -161,7 +164,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    glViewport(0, 0, FULL_WIDTH, FULL_HEIGHT);
+    glViewport(0, 0, PRODUCTION_WIDTH, PRODUCTION_HEIGHT);
 
     // Render Setup
     RenderParams renderParams;
@@ -187,53 +190,44 @@ int main(int argc, char* argv[]) {
     renderParams.jitter = 1.0f;
 
     //Technical Settings
-    renderParams.backgroundColor = glm::vec3(0.3f, 0.3f, 0.6f);
+    renderParams.backgroundColor = glm::vec3(0.9f, 0.9f, 0.9f);
     renderParams.haltonBases = {2,3};
 
     // Scene Setup
     Scene scene;
-    auto brickAlbedo = std::make_shared<Texture>("src/assets/textures/Bricks101_1K-JPG_Color.jpg");
-    auto brickRoughness = std::make_shared<Texture>("src/assets/textures/Bricks101_1K-JPG_Roughness.jpg");
-    auto brickNormal = std::make_shared<Texture>("src/assets/textures/Bricks101_1K-JPG_NormalGL.jpg");
-    auto brickAO = std::make_shared<Texture>("src/assets/textures/Bricks101_1K-JPG_AmbientOcclusion.jpg");
-
-    auto testMat = std::make_shared<Material>(glm::vec3(0.8f,0.8f,0.8f),0.7f,0.0f,
-        0.0f,0.0f,0.0f,glm::vec3(0.0f));
-
-    testMat->albedoMap = brickAlbedo;
-    testMat->roughnessMap = brickRoughness;
-    testMat->normalMap = brickNormal;
-    testMat->aoMap = brickAO;
-
-    auto testCarPaint = std::make_shared<Material>(glm::vec3(1.0f,0.2f,0.2f),
-        0.3f,1.0f,0.0,0,0.0f,glm::vec3(0.0f));
-    testCarPaint->clearcoat = 1.0f;
-    testCarPaint->clearcoatRoughness = 0.5f;
-
     auto velvet = std::make_shared<Material>(glm::vec3(0.7f,0.2f,0.3f),
         0.8f,0.0f,0.0f,0.0f,0.0f,glm::vec3(0.0f));
     velvet->sheen = 1.0f;
     velvet->sheenColour = glm::vec3(0.9f,0.3f,0.4f);
 
-    auto brushedMetal = std::make_shared<Material>();
-    brushedMetal->colour = glm::vec3(0.9f,0.8f,0.6f);
-    brushedMetal->roughness = 0.2f;
-    brushedMetal->metallic = 1.0f;
-    brushedMetal->anisotropy = 0.9f;
-    brushedMetal->anisotropyRotation = 90.0f;
+    auto brushedGold = std::make_shared<Material>();
+    brushedGold->colour = glm::vec3(0.85f, 0.65f, 0.35f);
+    brushedGold->roughness = 0.25f;
+    brushedGold->metallic = 0.6f;
+    brushedGold->reflectivity = 1.0f;
+    brushedGold->anisotropy = 0.6f;       // Strong directional grain
+    brushedGold->anisotropyRotation = 0.0f;  // Grain direction (0° = horizontal)
 
+    Mesh* bunny = loadObjectMesh("src/assets/objects/bunny.obj", brushedGold);
+
+    auto t = Transform(glm::vec3(0.0f,-5.0f,-2.0f),glm::vec3(0.0f,40.0f,0.0f),
+        glm::vec3(3.0f,3.0f,3.0f));
+    bunny->setTransform(t);
 
     auto light = new DirectionalLight(glm::vec3(0,-1.0,-1.0f),
         glm::vec3(1.0f,1.0f,1.0f),3.0f,0.01f);
     scene.addLight(light);
 
-    Mesh* bunny = loadObjectMesh("src/assets/objects/buddha.obj",
-        glm::vec3(0.0f,0.0f,0.0f),20.0f, velvet);
-
     scene.addEntity(bunny);
+
+    BoundingBox box = bunny->getBoundingBox();
+    std::cout << "Mesh bounds: "
+              << box.min.x << "," << box.min.y << "," << box.min.z << " to "
+              << box.max.x << "," << box.max.y << "," << box.max.z << std::endl;
+
     Camera camera(
-        glm::vec3(0.0f, 2.5f, 6.0f),
-        glm::vec3(0.0f, 2.5f, 0.0f),60,currentWidth,currentHeight
+        glm::vec3(0.0f, 0.0f, 12.0f),
+        glm::vec3(0.0f, 0.0f, -2.0f),60,currentWidth, currentHeight
     );
     g_camera = &camera;
 
