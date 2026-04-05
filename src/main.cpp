@@ -1,6 +1,9 @@
 #include <chrono>
 #include <iostream>
 #include <vector>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 #include <glad/glad.h>
 #include "../cmake-build-debug/_deps/glfw-src/include/GLFW/glfw3.h"
 #include "modelling/core/Scene.h"
@@ -22,7 +25,7 @@ constexpr int PRODUCTION_WIDTH = 1920;
 constexpr int PRODUCTION_HEIGHT = 1080;
 constexpr int PREVIEW_WIDTH = 1280;
 constexpr int PREVIEW_HEIGHT = 720;
-constexpr int INTERACTIVE_WIDTH = 480;
+constexpr int INTERACTIVE_WIDTH = 640;
 constexpr int INTERACTIVE_HEIGHT = 360;
 
 struct QualityPreset {
@@ -117,8 +120,6 @@ bool checkShaderCompile(const GLuint shader, const char* name) {
     return true;
 }
 
-
-
 void renderScene(const Scene& scene, const Camera& camera, const RenderParams& renderParams,
     std::vector<glm::vec3>& pixels, const int width, const int height) {
 
@@ -138,7 +139,6 @@ void renderScene(const Scene& scene, const Camera& camera, const RenderParams& r
     std::cout << "Rendered in: " << duration_sec.count() << " seconds" << std::endl;
 }
 
-
 int main(int argc, char* argv[]) {
     // Setting up a simple viewport to test primitives and components.
     glfwInit();
@@ -156,6 +156,11 @@ int main(int argc, char* argv[]) {
     }
 
     glfwMakeContextCurrent(window);
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 460");
     glfwSetKeyCallback(window, key_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
@@ -195,40 +200,11 @@ int main(int argc, char* argv[]) {
 
     // Scene Setup
     Scene scene;
-    auto velvet = std::make_shared<Material>(glm::vec3(0.7f,0.2f,0.3f),
-        0.8f,0.0f,0.0f,0.0f,0.0f,glm::vec3(0.0f));
-    velvet->sheen = 1.0f;
-    velvet->sheenColour = glm::vec3(0.9f,0.3f,0.4f);
-
-    auto brushedGold = std::make_shared<Material>();
-    brushedGold->colour = glm::vec3(0.85f, 0.65f, 0.35f);
-    brushedGold->roughness = 0.25f;
-    brushedGold->metallic = 0.6f;
-    brushedGold->reflectivity = 1.0f;
-    brushedGold->anisotropy = 0.6f;       // Strong directional grain
-    brushedGold->anisotropyRotation = 0.0f;  // Grain direction (0° = horizontal)
-
-    Mesh* bunny = loadObjectMesh("src/assets/objects/bunny.obj", brushedGold);
-
-    auto* cone = new Cone(2.0f,0.5f,brushedGold);
-
-    auto t = Transform(glm::vec3(0.0f,0.0f,0.0f),glm::vec3(0.0f,0.0f,180.0f),
-        glm::vec3(1.0f,1.0f,1.0f));
-    cone->setTransform(t);
-
     auto light = new DirectionalLight(glm::vec3(0,-1.0,-1.0f),
         glm::vec3(1.0f,1.0f,1.0f),3.0f,0.01f);
     scene.addLight(light);
-
-    scene.addEntity(cone);
-
-    BoundingBox box = bunny->getBoundingBox();
-    std::cout << "Mesh bounds: "
-              << box.min.x << "," << box.min.y << "," << box.min.z << " to "
-              << box.max.x << "," << box.max.y << "," << box.max.z << std::endl;
-
     Camera camera(
-        glm::vec3(0.0f, 0.0f, 12.0f),
+        glm::vec3(0.0f, 3.0f, 12.0f),
         glm::vec3(0.0f, 0.0f, -2.0f),60,currentWidth, currentHeight
     );
     g_camera = &camera;
@@ -314,17 +290,172 @@ int main(int argc, char* argv[]) {
     std::vector<glm::vec3> pixels(currentWidth * currentHeight);
 
 
-
-    renderScene(scene,camera,renderParams,pixels,currentWidth,currentHeight);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, currentWidth, currentHeight, GL_RGB, GL_FLOAT, pixels.data());
     render = false;
-    while (!glfwWindowShouldClose(window)) {
-        if (render) {
-            renderParams.primarySamples = currentQuality.pSamples;
-            renderParams.reflectionSamples = currentQuality.rSamples;
-            renderParams.shadowSamples = currentQuality.sSamples;
-            renderParams.maxDepth = currentQuality.maxDepth;
 
+    enum ApplicationState {MENU, RUNNING};
+    ApplicationState state = MENU;
+    bool showCustomRenderSettings = false;
+    bool customRenderSettings = false;
+
+    while (!glfwWindowShouldClose(window)) {
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        if (state == MENU) {
+            ImGui::SetNextWindowPos(ImVec2(PRODUCTION_WIDTH * 0.5 - 150, PREVIEW_HEIGHT * 0.5 - 100));
+            ImGui::SetNextWindowSize(ImVec2(300,200));
+            ImGui::Begin("MREdu", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+
+            ImGui::SetCursorPosX(100);
+            ImGui::Text("     MREdu");
+            ImGui::Separator();
+            ImGui::Spacing();
+            ImGui::SetCursorPosX(100);
+            if (ImGui::Button("Start",ImVec2(100,40))) {
+                state = RUNNING;
+                render = true;
+            }
+            ImGui::Spacing();
+            ImGui::SetCursorPosX(100);
+            if (ImGui::Button("Exit",ImVec2(100,40))) {
+                glfwSetWindowShouldClose(window, true);
+            }
+            ImGui::End();
+
+        } else if (state == RUNNING) {
+            ImGui::SetNextWindowPos(ImVec2(10,10));
+            ImGui::Begin("Render Settings");
+            if (ImGui::CollapsingHeader("Mode", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (ImGui::Button("Interactive")) {
+                    showCustomRenderSettings = false;
+                    currentWidth = INTERACTIVE_WIDTH;
+                    currentHeight = INTERACTIVE_HEIGHT;
+                    currentQuality = INTERACTIVE;
+                    if (g_camera) {
+                        g_camera->setAspect(static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
+                            currentWidth,currentHeight);
+                    }
+                    render = true;
+                }
+                if (ImGui::Button("Preview")) {
+                    showCustomRenderSettings = false;
+                    currentWidth = PREVIEW_WIDTH;
+                    currentHeight = PREVIEW_HEIGHT;
+                    currentQuality = PREVIEW;
+                    if (g_camera) {
+                        g_camera->setAspect(static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
+                            currentWidth,currentHeight);
+                    }
+                    render = true;
+                }
+                if (ImGui::Button("Production")) {
+                    showCustomRenderSettings = false;
+                    currentWidth = PRODUCTION_WIDTH;
+                    currentHeight = PRODUCTION_HEIGHT;
+                    currentQuality = PRODUCTION;
+                    if (g_camera) {
+                        g_camera->setAspect(static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
+                            currentWidth,currentHeight);
+                        render = true;
+                    }
+                }
+                if (ImGui::Button("Custom")) {
+                    showCustomRenderSettings = true;
+                }
+
+                if (showCustomRenderSettings) {
+                    ImGui::Indent();
+                    ImGui::SliderInt("Primary Samples", &renderParams.primarySamples, 1, 64);
+                    ImGui::SliderInt("Shadow Samples", &renderParams.shadowSamples, 1, 128);
+                    ImGui::SliderInt("Reflection Samples", &renderParams.reflectionSamples, 1, 32);
+                    ImGui::SliderInt("Reflection Depth", &renderParams.maxDepth, 1, 16);
+                    ImGui::Checkbox("Enable Soft Shadows", &renderParams.softShadows);
+                    ImGui::Checkbox("Russian Roulette Ray Culling", &renderParams.russianRoulette);
+                    ImGui::SliderInt("Roulette Start Depth", &renderParams.russianRouletteStartDepth,0, 10);
+                    ImGui::Checkbox("Reduce Samples With Depth", &renderParams.reduceSamplesWithDepth);
+                    ImGui::ColorEdit3("Background Colour", &renderParams.backgroundColor.x);
+                    ImGui::SliderInt("Screen Width",&currentWidth, 256, 1920);
+                    ImGui::SliderInt("Screen Height",&currentHeight,144, 1080);
+                    if (ImGui::Button("Apply Settings")) {
+                        render = true;
+                    };
+                    ImGui::Unindent();
+                }
+            }
+            ImGui::End();
+            ImGui::SetNextWindowPos(ImVec2(PRODUCTION_WIDTH - 440,10));
+            ImGui::SetNextWindowSize(ImVec2(220,400));
+            ImGui::Begin("Objects (Click to add)");
+            if (ImGui::CollapsingHeader("Primitives", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                if (ImGui::Button("Sphere")) {
+                    auto* sphere = new Sphere(std::make_shared<Material>());
+                    scene.addEntity(sphere);
+                    scene.buildBVH();
+                    render = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cuboid")) {
+                    auto* cuboid = new Cuboid(std::make_shared<Material>());
+                    scene.addEntity(cuboid);
+                    scene.buildBVH();
+                    render = true;
+                }
+                if (ImGui::Button("Cylinder")) {
+                    auto* cylinder = new Cylinder(0.5,1,std::make_shared<Material>());
+                    scene.addEntity(cylinder);
+                    scene.buildBVH();
+                    render = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cone")) {
+                    auto* cylinder = new Cone(1,0.5,std::make_shared<Material>());
+                    scene.addEntity(cylinder);
+                    scene.buildBVH();
+                    render = true;
+                }
+                if (ImGui::Button("Plane")) {
+                    auto* plane = new Plane(glm::vec3(0.0f),
+                        glm::vec3(0.0f,1.0f,0.0f),std::make_shared<Material>());
+                    scene.addEntity(plane);
+                    scene.buildBVH();
+                    render = true;
+                }
+            }
+            if (ImGui::CollapsingHeader("Assets", ImGuiTreeNodeFlags_DefaultOpen)) {
+                  //for (asset : assets) {
+                  //    std::string name = asset.name();
+                   //   if (ImGui::Button(name)) {
+
+                   //   }
+                  //}
+            }
+            ImGui::End();
+
+            ImGui::SetNextWindowPos(ImVec2(PRODUCTION_WIDTH - 210,10));
+            ImGui::SetNextWindowSize(ImVec2(200,1000));
+            ImGui::Begin("Scene Explorer",nullptr,ImGuiWindowFlags_NoCollapse);
+
+            ImGui::Text("Scene Objects");
+            ImGui::Separator();
+            ImGui::BeginChild("ObjectList", ImVec2(0, currentHeight), true);
+            ImGui::EndChild();
+            ImGui::End();
+        }
+
+        if (render) {
+            if (!showCustomRenderSettings) {
+                renderParams.primarySamples = currentQuality.pSamples;
+                renderParams.reflectionSamples = currentQuality.rSamples;
+                renderParams.shadowSamples = currentQuality.sSamples;
+                renderParams.maxDepth = currentQuality.maxDepth;
+            }
+
+            if (g_camera) {
+                g_camera->setAspect(static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
+                    currentWidth, currentHeight);
+            }
             pixels.resize(currentWidth * currentHeight);
 
             glBindTexture(GL_TEXTURE_2D, texture);
@@ -343,6 +474,10 @@ int main(int argc, char* argv[]) {
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -359,4 +494,4 @@ int main(int argc, char* argv[]) {
     glfwTerminate();
 
     return 0;
-}
+};

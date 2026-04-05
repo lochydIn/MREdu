@@ -30,7 +30,6 @@ add_executable(MREdu
         src/main.cpp
         src/glad.c
         src/modelling/core/Entity.h
-        src/modelling/core/components/Component.h
         src/modelling/core/Scene.h
         src/modelling/core/Camera.h
         src/modelling/core/components/Transform.h
@@ -66,15 +65,21 @@ add_executable(MREdu
         src/modelling/core/components/Texture.h
         src/modelling/core/components/stb_image.h
         src/modelling/core/components/Texture.cpp
+        ${imgui_SOURCE_DIR}/imgui.cpp
+        ${imgui_SOURCE_DIR}/imgui_draw.cpp
+        ${imgui_SOURCE_DIR}/imgui_tables.cpp
+        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
 set(IMGUI_SOURCES
-        $(imgui_SOURCE_DIR)/imgui.cpp
-        $(imgui_SOURCE_DIR)/imgui.draw.cpp
-        $(imgui_SOURCE_DIR)/imgui_tables.cpp
-        $(imgui_SOURCE_DIR)/imgui_widgets.cpp
-        $(imgui_SOURCE_DIR)/backends/imgui_impl_glfw.cpp
-        $(imgui_SOURCE_DIR)/backends/imgui_impl_opengl3.cpp
+        ${imgui_SOURCE_DIR}/imgui.cpp
+        ${imgui_SOURCE_DIR}/imgui.draw.cpp
+        ${imgui_SOURCE_DIR}/imgui_tables.cpp
+        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
 target_include_directories(MREdu PRIVATE
