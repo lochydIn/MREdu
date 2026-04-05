@@ -210,15 +210,17 @@ int main(int argc, char* argv[]) {
 
     Mesh* bunny = loadObjectMesh("src/assets/objects/bunny.obj", brushedGold);
 
-    auto t = Transform(glm::vec3(0.0f,-5.0f,-2.0f),glm::vec3(0.0f,40.0f,0.0f),
-        glm::vec3(3.0f,3.0f,3.0f));
-    bunny->setTransform(t);
+    auto* cone = new Cone(2.0f,0.5f,brushedGold);
+
+    auto t = Transform(glm::vec3(0.0f,0.0f,0.0f),glm::vec3(0.0f,0.0f,180.0f),
+        glm::vec3(1.0f,1.0f,1.0f));
+    cone->setTransform(t);
 
     auto light = new DirectionalLight(glm::vec3(0,-1.0,-1.0f),
         glm::vec3(1.0f,1.0f,1.0f),3.0f,0.01f);
     scene.addLight(light);
 
-    scene.addEntity(bunny);
+    scene.addEntity(cone);
 
     BoundingBox box = bunny->getBoundingBox();
     std::cout << "Mesh bounds: "

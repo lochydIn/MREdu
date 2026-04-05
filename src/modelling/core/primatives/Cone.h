@@ -11,16 +11,17 @@
 
 class Cone : public Entity {
     public:
-        Cone(const glm::vec3 position, const float height, const float radius, const std::shared_ptr<Material>& mat)
-            : Entity(mat), position(glm::vec3(position.x,position.y + height, position.z)), radius(radius), height(height * 2) {}
+        Cone(const float height, const float radius, const std::shared_ptr<Material>& mat)
+            : Entity(mat), radius(radius), height(height * 2) {}
 
         Cone(const Cone&) = delete;
 
         Cone& operator=(const Cone&) = delete;
 
         bool intersect (const Ray& ray, Intersection& hit, float tMin, float tMax) const override {
-            glm::vec3 ro = ray.origin - position;
-            glm::vec3 rd = ray.direction;
+            Ray localRay = rayToObjectSpace(ray);
+            glm::vec3 ro = localRay.origin;
+            glm::vec3 rd = localRay.direction;
 
             // Cone equation: radius at height y = radius * (1 - y/(height/2))
             // Solve quadratic: a*t^2 + b*t + c = 0
@@ -44,22 +45,24 @@ class Cone : public Entity {
 
 
                 // If the point of intersection is not above the middle.
-                if (!(ray.positionAt(t1).y > position.y)) {
-                    // Check both intersections
-                    if (t1 > tMin) {
-                        float y = ro.y + t1 * rd.y;
-                        if (y >= -height * 0.5f && y <= height * 0.5f) {
+
+                if (t1 > tMin) {
+                    float y = ro.y + t1 * rd.y;
+                    if (y >= -height * 0.5f && y <= height * 0.5f) {
+                        if (y <= 0.0f) {
                             t = t1;
                             glm::vec3 point = ro + rd * t1;
-                            glm::vec3 normalDir = glm::vec3(point.x, -k * k * point.y, point.z);
+                            auto normalDir = glm::vec3(point.x, -k * k * point.y, point.z);
                             normal = glm::normalize(normalDir);
                         }
                     }
                 }
-                if (!(ray.positionAt(t2).y > position.y)) {
-                    if (t2 > tMin && t2 < t) {
-                        float y = ro.y + t2 * rd.y;
-                        if (y >= -height * 0.5f && y <= height * 0.5f) {
+
+
+                if (t2 > tMin && t2 < t) {
+                    float y = ro.y + t2 * rd.y;
+                    if (y >= -height * 0.5f && y <= height * 0.5f) {
+                        if (y <= 0.0f) {
                             t = t2;
                             glm::vec3 point = ro + rd * t2;
                             glm::vec3 normalDir = glm::vec3(point.x, -k * k * point.y, point.z);
@@ -88,14 +91,17 @@ class Cone : public Entity {
                 hit.distance = t;
                 hit.point = ray.positionAt(t);
                 hit.normal = normal;
-                glm::vec3 localPoint = hit.point - position;
+                glm::vec3 localPoint = hit.point;
                 hit.setFrontSurface(ray, hit.normal);
+
                 float u = atan2(localPoint.z, localPoint.x) / (2.0f * M_PI);
                 if (u > 0) {
                     u += 1.0f;
                 }
+
                 hit.tangent = glm::vec3(-sin(u * 2 * M_PI),0,cos(u * 2 * M_PI));
                 hit.bitangent = glm::cross(hit.normal, hit.tangent);
+
                 float v = (localPoint.y + height * 0.5f) / height;
 
                 if (glm::abs(localPoint.y) < height * 0.5f && localPoint.y > -height * 0.5f) {
@@ -105,7 +111,7 @@ class Cone : public Entity {
                     float angle = atan2(localPoint.z, localPoint.x);
                     hit.uv = glm::vec2(r * glm::cos(angle), r * glm::sin(angle)) * 0.5f + 0.5f;
                 }
-
+                objectIntersectionToWorldSpace(hit);
                 hit.entity = const_cast<Cone*>(this);
                 return true;
             }
@@ -114,16 +120,29 @@ class Cone : public Entity {
         }
 
         [[nodiscard]] BoundingBox getBoundingBox() const override {
-            const float maxR = radius;
-            const auto bB = BoundingBox(position - glm::vec3(maxR,height * 0.5f,maxR),
-                position + glm::vec3(maxR,height * 0.5f,maxR));
+            const glm::mat4 matrix = transform.getMatrix();
+            const glm::vec3 localMin(-radius,-height * 0.5f, - radius);
+            const glm::vec3 localMax(radius,height * 0.5f, radius);
+            glm::vec3 vertices[8];
+            for (int i = 0; i < 8; i++) {
+                glm::vec3 vertex(
+                    (i & 1) ? localMax.x : localMin.x,
+                    (i & 2) ? localMax.y : localMin.y,
+                    (i & 4) ? localMax.z : localMin.z);
+                vertices[i] = glm::vec3(matrix * glm::vec4(vertex, 1.0f));
+            }
+            glm::vec3 worldMin = vertices[0];
+            glm::vec3 worldMax = vertices[0];
+            for (auto vertice : vertices) {
+                worldMin = glm::min(worldMin, vertice);
+                worldMax = glm::max(worldMax, vertice);
+            }
+            const auto bB = BoundingBox(worldMin, worldMax);
             return bB;
         }
 
 
     private:
-        glm::vec3 position;
         float radius;
         float height;
-        Transform transform;
 };
