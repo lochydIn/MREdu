@@ -8,14 +8,14 @@
 
 class CylinderLight : public AreaLight {
     public:
-        CylinderLight(const glm::vec3& center, const float radius, const float height, const glm::vec3& colour,
-            const float intensity) : AreaLight(colour, intensity), position(center), radius(radius), height(height) {
+        CylinderLight() : AreaLight(glm::vec3(1.0f), 10.0f),
+    radius(0.5f), height(1.0f) {
             radiance = colour * intensity;
 
             float sideArea = 2.0f * glm::pi<float>() * radius * height;
             float capArea = glm::pi<float>() * radius * radius;
-            totalArea = sideArea + 2.0f * capArea;
-            invTotalArea = 1.0f / totalArea;
+            area = sideArea + 2.0f * capArea;
+            invTotalArea = 1.0f / area;
 
             sideProbability = sideArea * invTotalArea;
             capProbability = capArea * invTotalArea;
@@ -48,8 +48,9 @@ class CylinderLight : public AreaLight {
         }
 
         bool intersect(const Ray& ray, Intersection& hit, const float tMin, const float tMax) const override {
-            const glm::vec3 rO = ray.origin - position;
-            const glm::vec3 rD = ray.direction;
+            Ray localRay = rayToObjectSpace(ray);
+            const glm::vec3 rO = localRay.origin;
+            const glm::vec3 rD = localRay.direction;
 
             const float a = rD.x * rD.x + rD.z * rD.z;
             const float b = 2.0f * (rO.x * rD.x + rO.z * rD.z);
@@ -57,12 +58,12 @@ class CylinderLight : public AreaLight {
             const float discriminant = b * b - 4 * a * c;
 
             float t = INFINITY;
-
             if (discriminant >= 0 && glm::abs(a) > 1e-6f) {
+                glm::vec3 normal;
                 const float sqrtD = glm::sqrt(discriminant);
                 const float t1 = (-b - sqrtD) / (2 * a);
                 const float t2 = (-b + sqrtD) / (2 * a);
-                glm::vec3 normal;
+
 
                 float tBody = INFINITY;
                 if (t1 > tMin) {
@@ -79,6 +80,7 @@ class CylinderLight : public AreaLight {
                         normal = glm::normalize(glm::vec3(rO.x + t2 * rD.x, 0, rO.z + t2 * rD.z));
                     }
                 }
+
                 if (tBody < t) {
                     t = tBody;
                 }
@@ -100,9 +102,35 @@ class CylinderLight : public AreaLight {
                 if (t < INFINITY && t < tMax) {
                     hit.distance = t;
                     hit.normal = normal;
-                    hit.point = ray.positionAt(t);
-                    hit.entity = const_cast<CylinderLight*>(this);
-                    hit.setFrontSurface(ray, hit.normal);
+                    hit.point = localRay.positionAt(t);
+                    glm::vec3 localPoint = hit.point;
+
+                    float u = atan2(localPoint.z,localPoint.x) / (2 * M_PI);
+                    if (u > 0) {
+                        u += 1.0f;
+                    }
+
+                    if (glm::abs(hit.normal.y) < 0.1f) {
+                        if (u < 0.0f) {
+                            u += 1.0f;
+                        }
+                        float v = (localPoint.y + height * 0.5f) / height;
+                        hit.uv = glm::vec2(u, v);
+                    } else {
+                        const float r = glm::length(glm::vec2(localPoint.x, localPoint.z)) / radius;
+                        const float angle = atan2(localPoint.z,localPoint.x);
+                        const float u = r * std::cos(angle) * 0.5f + 0.5f;
+                        const float v = r * std::sin(angle) * 0.5f + 0.5f;
+                        hit.uv = glm::vec2(u, v);
+                    }
+
+                    hit.tangent = glm::vec3(-std::sin(u * 2 * M_PI),0, std::cos(u * 2 * M_PI));
+                    hit.bitangent = glm::cross(hit.normal, hit.tangent);
+
+                    objectIntersectionToWorldSpace(hit);
+                    hit.entity = const_cast<Entity*>(dynamic_cast<const Entity*>(this));
+                    hit.setFrontSurface(ray,hit.normal);
+
                     return true;
                 }
             }
@@ -110,24 +138,40 @@ class CylinderLight : public AreaLight {
         }
 
         [[nodiscard]] BoundingBox getBoundingBox() const override {
-        const auto bB = BoundingBox(position - glm::vec3(radius, height * 0.5f, radius),
-            position + glm::vec3(radius, height * 0.5f, radius));
-        return bB;
+            const glm::mat4 matrix = transform.getMatrix();
+
+            const glm::vec3 localMin(-radius, -height * 0.5f, - radius);
+            const glm::vec3 localMax(radius, height * 0.5f, radius);
+
+
+            glm::vec3 vertices[8];
+            for (int i = 0; i < 8; i++) {
+                glm::vec3 vertex(
+                    (i & 1) ? localMax.x : localMin.x,
+                    (i & 2) ? localMax.y : localMin.y,
+                    (i & 4) ? localMax.z : localMin.z);
+                vertices[i] = glm::vec3(matrix * glm::vec4(vertex, 1.0f));
+            }
+            glm::vec3 worldMin = vertices[0];
+            glm::vec3 worldMax = vertices[0];
+            for (int i = 1; i < 8; i++) {
+                worldMin = glm::min(worldMin, vertices[i]);
+                worldMax = glm::max(worldMax, vertices[i]);
+            }
+            const auto bB = BoundingBox(worldMin, worldMax);
+            return bB;
         }
-
-        [[nodiscard]] float getArea() const override {return totalArea;}
-
-        [[nodiscard]] glm::vec3 getColour() const override { return colour;}
 
     private:
         void sampleSide(LightSample& sample, const float r1, const float r2) const {
             const float theta = 2.0f * glm::pi<float>() * r1;
             const float y = (r2 - 0.5f) * height;
 
-            sample.xL = position + glm::vec3(radius * glm::cos(theta),
+            sample.xL = transform.position + glm::vec3(radius * glm::cos(theta),
                 y,radius * glm::sin(theta));
 
-            sample.lN = glm::normalize(sample.xL - glm::vec3(position.x,sample.xL.y,position.z));
+            sample.lN = glm::normalize(sample.xL - glm::vec3(transform.position.x,
+                sample.xL.y,transform.position.z));
 
         }
 
@@ -135,18 +179,15 @@ class CylinderLight : public AreaLight {
             const float r = radius * glm::sqrt(r1);
             const float theta = 2.0f * glm::pi<float>() * r2;
 
-            sample.xL = position + glm::vec3(r * glm::cos(theta),
+            sample.xL = transform.position + glm::vec3(r * glm::cos(theta),
                 yOffset,
                 r * glm::sin(theta));
 
             sample.lN = glm::vec3(0, (yOffset > 0) ? 1.0f : -1.0f, 0.0f);
         }
 
-
-        glm::vec3 position;
         float radius;
         float height;
-        float totalArea;
         float invTotalArea;
         float sideProbability;
         float capProbability;

@@ -14,6 +14,9 @@
 #include "modelling/core/lighting/simple/DirectionalLight.h"
 #include "modelling/core/lighting/simple/PointLight.h"
 #include "modelling/core/components/Material.h"
+#include "modelling/core/lighting/area/CuboidLight.h"
+#include "modelling/core/lighting/area/CylinderLight.h"
+#include "modelling/core/lighting/area/SphereLight.h"
 #include "modelling/core/primatives/Cone.h"
 #include "modelling/core/primatives/Cylinder.h"
 #include "rendering/structs/RenderParams.h"
@@ -200,9 +203,6 @@ int main(int argc, char* argv[]) {
 
     // Scene Setup
     Scene scene;
-    auto light = new DirectionalLight(glm::vec3(0,-1.0,-1.0f),
-        glm::vec3(1.0f,1.0f,1.0f),3.0f,0.01f);
-    scene.addLight(light);
     Camera camera(
         glm::vec3(0.0f, 3.0f, 12.0f),
         glm::vec3(0.0f, 0.0f, -2.0f),60,currentWidth, currentHeight
@@ -296,6 +296,10 @@ int main(int argc, char* argv[]) {
     ApplicationState state = MENU;
     bool showCustomRenderSettings = false;
     bool customRenderSettings = false;
+    Entity* selectedEntity = nullptr;
+    Light* selectedLight = nullptr;
+    bool showEntityProperties = false;
+    bool showLightProperties = false;
 
     while (!glfwWindowShouldClose(window)) {
         ImGui_ImplOpenGL3_NewFrame();
@@ -423,6 +427,49 @@ int main(int argc, char* argv[]) {
                     render = true;
                 }
             }
+            if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (ImGui::Button("DirectionalLight")) {
+                    auto* light = new DirectionalLight(glm::vec3(0.0f,-1.0f,0.0f),
+                        glm::vec3(1.0f),1.0f,0.05f);
+                    scene.addLight(light);
+                    scene.buildBVH();
+                    render = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("PointLight")) {
+                    auto* pointLight = new PointLight(glm::vec3(0.0f,0.0f,0.0f),
+                        glm::vec3(1.0f),1.0f,1.0f);
+                    scene.addLight(pointLight);
+                    scene.buildBVH();
+                    render = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("CuboidLight")) {
+                    auto* cuboidLight = new CuboidLight();
+                    scene.addEntity(cuboidLight);
+                    scene.addLight(cuboidLight);
+                    scene.buildBVH();
+                    render = true;
+                }
+                if (ImGui::Button("CylinderLight")) {
+                    auto* cylinderLight = new CylinderLight();
+                    scene.addEntity(cylinderLight);
+                    scene.addLight(cylinderLight);
+                    scene.buildBVH();
+                    render = true;
+
+                }
+                if (ImGui::Button("SphereLight")) {
+                    auto* sphereLight = new SphereLight();
+                    scene.addEntity(sphereLight);
+                    scene.addLight(sphereLight);
+                    scene.buildBVH();
+                    render = true;
+                }
+            }
+
+
+
             if (ImGui::CollapsingHeader("Assets", ImGuiTreeNodeFlags_DefaultOpen)) {
                   //for (asset : assets) {
                   //    std::string name = asset.name();
@@ -440,8 +487,135 @@ int main(int argc, char* argv[]) {
             ImGui::Text("Scene Objects");
             ImGui::Separator();
             ImGui::BeginChild("ObjectList", ImVec2(0, currentHeight), true);
+            for (size_t i = 0; i < scene.getFiniteEntities().size(); ++i) {
+                Entity* entity = scene.getFiniteEntities()[i];
+
+                if (dynamic_cast<Light*>(entity)) {
+                    continue;
+                }
+                std::string name = "Entity " + std::to_string(i);
+                if (ImGui::Selectable(name.c_str(), selectedEntity == entity)) {
+                    selectedEntity = entity;
+                    selectedLight = nullptr;
+                }
+            }
+            for (size_t i = 0; i < scene.getInfiniteEntities().size(); ++i) {
+                Entity* entity = scene.getInfiniteEntities()[i];
+                std::string name = "Entity " + std::to_string(i);
+                if (ImGui::Selectable(name.c_str(), selectedEntity == entity)) {
+                    selectedEntity = entity;
+                    selectedLight = nullptr;
+                }
+            }
+            for (size_t i = 0; i < scene.getLights().size(); ++i) {
+                Light* light = scene.getLights()[i];
+                std::string name = "Light " + std::to_string(i);
+                if (dynamic_cast<AreaLight*>(light)) {
+                    if (ImGui::Selectable(name.c_str(), selectedLight == light)) {
+                        selectedLight = light;
+                        selectedEntity = dynamic_cast<Entity*>(light);
+                    }
+                } else {
+                    if (ImGui::Selectable(name.c_str(), selectedLight == light)) {
+                        selectedLight = light;
+                        selectedEntity = nullptr;
+                    }
+                }
+            }
             ImGui::EndChild();
             ImGui::End();
+
+            if (selectedEntity) {
+                ImGui::SetNextWindowPos(ImVec2(PRODUCTION_WIDTH - 750,10));
+                ImGui::SetNextWindowSize(ImVec2(300,400));
+                ImGui::Begin("Entity Properties", nullptr, ImGuiWindowFlags_NoCollapse);
+                Transform& t = selectedEntity->editTransform();
+                Material& mat = selectedEntity->editMaterial();
+
+                ImGui::Text("Transform");
+                ImGui::Separator();
+                if (ImGui::DragFloat3("Position", &t.position.x,0.1f)) {
+                    render = true;
+                    scene.buildBVH();
+                }
+                if (ImGui::DragFloat3("Rotation", &t.rotation.x,0.1f)) {
+                    render = true;
+                    scene.buildBVH();
+                }
+                if (ImGui::DragFloat3("Scale", &t.scale.x,0.1f,0.1,1000.0f)) {
+                    render = true;
+                    scene.buildBVH();
+                }
+                ImGui::Spacing();
+                ImGui::Text("Material");
+                ImGui::Separator();
+                if (ImGui::ColorEdit3("Colour",&mat.colour.x)) render = true;
+                if (ImGui::SliderFloat("Roughness", &mat.roughness,0.0f,1.0f)) render = true;
+                if (ImGui::SliderFloat("Metallic", &mat.metallic,0.0f,1.0f)) render = true;
+                if (ImGui::SliderFloat("Reflectivity",&mat.reflectivity,0.0f,1.0f)) render = true;
+                if (ImGui::SliderFloat("IOR", &mat.iOR, 1.0f, 3.0f)) render = true;
+                if (ImGui::SliderFloat("Transparency", &mat.transparency,0.0f,1.0f)) render = true;
+                if (ImGui::ColorEdit3("Attenuation", &mat.attenuation.x)) render = true;
+                if (ImGui::SliderFloat("ClearCoat",&mat.clearcoat,0.0f,1.0f)) render = true;
+
+                if (ImGui::SliderFloat("Clearcoat Roughness",&mat.clearcoatRoughness,
+                    0.0f,1.0f)) render = true;
+                if (ImGui::SliderFloat("Anisotropy",&mat.anisotropy,0.0f,1.0f)) render = true;
+                if (ImGui::SliderFloat("Anisotropy Rotation",&mat.anisotropyRotation,
+                    0.0f,180.0f)) render = true;
+                if (ImGui::SliderFloat("Sheen",&mat.sheen,0.0f,1.0f)) render = true;
+                if (ImGui::ColorEdit3("Sheen Colour", &mat.sheenColour.x)) render = true;
+                ImGui::Separator();
+                if (ImGui::Button("Delete Object", ImVec2(150,30))) {
+                    scene.removeEntity(selectedEntity);
+                    selectedEntity = nullptr;
+                    render = true;
+                }
+
+                ImGui::End();
+            }
+            if (selectedLight) {
+                ImGui::SetNextWindowPos(ImVec2(PRODUCTION_WIDTH - 650,420));
+                ImGui::SetNextWindowSize(ImVec2(200,400));
+                ImGui::Begin("Light Properties", nullptr);
+                glm::vec3 colour = selectedLight->getColour();
+                float intensity = selectedLight->getIntensity();
+                if (ImGui::ColorEdit3("Colour",&colour.x)) {
+                    selectedLight->setColour(colour);
+                    render = true;
+                }
+                if (ImGui::SliderFloat("Intensity",&intensity,0.0f,100.0f)) {
+                    selectedLight->setIntensity(intensity);
+                    render = true;
+                }
+                if (auto pointLight = dynamic_cast<PointLight*>(selectedLight)) {
+                    float radius = pointLight->getRadius();
+                    glm::vec3 position = pointLight->getPosition();
+                    if (ImGui::SliderFloat("Radius",&radius,0.01f,1.0f)) {
+                        pointLight->setRadius(radius);
+                        render = true;
+                    }
+                    if (ImGui::DragFloat3("Position", &position.x)) {
+                        pointLight->setPosition(position);
+                        render = true;
+                    }
+                }
+                if (auto dirLight = dynamic_cast<DirectionalLight*>(selectedLight)) {
+                    glm::vec3 direction = dirLight->getDirection();
+                    if (ImGui::SliderFloat3("Direction",&direction.x,0.0f,1.0f)) {
+                        dirLight->setDirection(direction);
+                        render = true;
+                    }
+                }
+                if (ImGui::Button("Delete Light", ImVec2(150,30))) {
+                    scene.removeEntity(dynamic_cast<Entity*>(selectedLight));
+                    scene.removeLight(selectedLight);
+                    selectedLight = nullptr;
+                    render = true;
+                }
+
+                ImGui::End();
+            }
         }
 
         if (render) {

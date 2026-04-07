@@ -52,7 +52,6 @@ class Sphere : public Entity {
 
         [[nodiscard]] BoundingBox getBoundingBox() const override {
             const float worldRadius = glm::max(transform.scale.x, glm::max(transform.scale.y, transform.scale.z));
-            glm::vec3 worldCenter = transform.position;
             const auto bB =  BoundingBox(transform.position - worldRadius, transform.position + worldRadius);
             return bB;
         }

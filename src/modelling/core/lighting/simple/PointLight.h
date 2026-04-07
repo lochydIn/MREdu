@@ -21,13 +21,18 @@ class PointLight : public Light {
 
         PointLight& operator=(PointLight&&) = delete;
 
-        [[nodiscard]] glm::vec3 getColour() const override {
-            return colour * brightness;
-        }
+        [[nodiscard]] glm::vec3 getColour() override {return colour * brightness;}
+        void setColour(const glm::vec3 newColour) override {colour = newColour;}
+
+        [[nodiscard]] float getIntensity() override {return brightness;}
+        void setIntensity(const float newIntensity) override{brightness = newIntensity;}
 
         [[nodiscard]] glm::vec3 getPosition() const {return position;}
-        [[nodiscard]] float getBrightness() const {return brightness;}
-        [[nodiscard]] float getRadius() const { return  radius;}
+        void setPosition(const glm::vec3 pos) {
+            position = pos;
+        }
+        [[nodiscard]] float getRadius() const {return  radius;}
+        void setRadius(const float newRadius) {radius = newRadius;}
 
     private:
         glm::vec3 position;

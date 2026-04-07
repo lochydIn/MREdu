@@ -8,16 +8,18 @@
 
 class SphereLight : public AreaLight {
     public:
-        SphereLight(glm::vec3 center, const float radius, glm::vec3 colour, const float intensity)
-            : AreaLight(colour, intensity), position(center), radius(radius) {
-            const auto mat = std::make_shared<Material>(colour,0.0f,0.0f,0.0f,1.0f,
-                0.0f,glm::vec3(0.0f));
+        SphereLight()
+            : AreaLight(glm::vec3(1.0f), 10.0f) {
+            transform.position = glm::vec3(0,0,0);
+            radius = 1.0f;
             area = 4.0f * glm::pi<float>() * radius * radius;
             invArea = 1.0f / area;
             radiance = colour * intensity / area;
+
+            const auto mat = std::make_shared<Material>(colour,0.0f,0.0f,0.0f,1.0f,
+               0.0f,glm::vec3(0.0f));
             mat->emissive = radiance * 10.0f;
             material = mat;
-
         }
 
         [[nodiscard]] LightSample sample(const glm::vec3& hitPoint, const float r1, const float r2) const override {
@@ -32,8 +34,8 @@ class SphereLight : public AreaLight {
                 glm::cos(phi));
 
 
-            sample.xL = position + direction * radius;
-            sample.lN = glm::normalize(sample.xL - position);
+            sample.xL = transform.position + direction * radius;
+            sample.lN = glm::normalize(sample.xL - transform.position);
             sample.w = glm::normalize(sample.xL - hitPoint);
             sample.distance = glm::length(sample.xL - hitPoint);
             sample.Le = radiance;
@@ -41,10 +43,11 @@ class SphereLight : public AreaLight {
             return sample;
         }
 
-        bool intersect(const Ray& ray, Intersection& hit, float tMin, float tMax) const override {
-            const float a = dot(ray.direction , ray.direction);
-            const float b = 2 * dot(ray.origin - position, ray.direction);
-            const float c = dot(ray.origin - position, ray.origin - position) - radius * radius;
+    bool intersect(const Ray& ray, Intersection& hit, const float tMin, const float tMax) const override {
+            Ray localRay = rayToObjectSpace(ray);
+            const float a = dot(localRay.direction , localRay.direction);
+            const float b = 2 * dot(localRay.origin, localRay.direction);
+            const float c = dot(localRay.origin, localRay.origin) - 1.0f;
             float discriminant = b * b - 4 * a * c;
 
             if (discriminant >= std::numeric_limits<float>::epsilon()) {   // If the ray intersects with the sphere.
@@ -52,10 +55,19 @@ class SphereLight : public AreaLight {
                 float t = (-b - std::sqrt(discriminant)) / (2 * a);
 
                 if (t > 0) { // If the intersection is within bounds.
-                    hit.point = ray.origin  + ray.direction * t; // Set the intersection point.
-                    const glm::vec3 outwardNormal = glm::normalize(hit.point - position);
-                    hit.setFrontSurface(ray, outwardNormal);
                     hit.distance = t;
+                    hit.point = localRay.positionAt(t);
+                    hit.normal = glm::normalize(hit.point);
+
+                    const float phi = atan2(hit.point.z, hit.point.x);;
+                    hit.uv.x = 0.5f + phi / (2 * M_PI);
+                    hit.uv.y = 0.5f - asin(hit.point.y) / M_PI;
+
+                    hit.tangent = glm::vec3(-std::sin(phi), 0, std::cos(phi));
+                    hit.bitangent = glm::cross(hit.normal, hit.tangent);
+
+                    objectIntersectionToWorldSpace(hit);
+                    hit.setFrontSurface(ray,hit.normal);
                     hit.entity = const_cast<Entity*>(dynamic_cast<const Entity*>(this));
                     return true;
                 }
@@ -64,22 +76,11 @@ class SphereLight : public AreaLight {
         }
 
         [[nodiscard]] BoundingBox getBoundingBox() const override {
-            auto const bB = BoundingBox(position - glm::vec3(radius), position + glm::vec3(radius));
+            const float worldRadius = glm::max(transform.scale.x, glm::max(transform.scale.y, transform.scale.z));
+            const auto bB =  BoundingBox(transform.position - worldRadius, transform.position + worldRadius);
             return bB;
         }
-
-        [[nodiscard]] float getArea() const override{
-            return area;
-        }
-
-        [[nodiscard]] glm::vec3 getColour() const override {
-            return colour;
-        }
-
-
     private:
-        glm::vec3 position;
         float radius;
-        float area;
         float invArea;
 };

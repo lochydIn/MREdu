@@ -24,17 +24,43 @@ public:
 
     };
 
-    static void removeEntity(){};
+    void removeEntity(const Entity* entity) {
+        auto ent = std::ranges::find(finiteEntities, entity);
+        if (ent != finiteEntities.end()) {
+            finiteEntities.erase(ent);
+            delete entity;
+        }
+        auto plane = std::ranges::find(infiniteEntities, entity);
+        if (ent != infiniteEntities.end()) {
+            infiniteEntities.erase(plane);
+            delete entity;
+        }
+    };
+
 
     void addLight(Light* light) {
         lights.push_back(light);
     };
 
-    void static removeLight(){};
+    void removeLight(Light* light) {
+        auto li = std::ranges::find(lights, light);
+        if (li != lights.end()) {
+            lights.erase(li);
+            delete light;
+        }
+    };
 
     [[nodiscard]] std::vector<Light*> getLights() const {
         return lights;
     };
+
+    [[nodiscard]] std::vector<Entity*> getFiniteEntities() const {
+        return finiteEntities;
+    }
+
+    [[nodiscard]] std::vector<Entity*> getInfiniteEntities() const {
+        return infiniteEntities;
+    }
 
     [[nodiscard]] Intersection intersect(const Ray& ray) const {
         Intersection hit;

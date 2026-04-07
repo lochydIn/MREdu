@@ -293,14 +293,13 @@ glm::vec3 Shader::shade (const Scene& scene, const Intersection& hit, const Ray&
                         glm::vec3 brdfValue = bRDF(surfaceColour, roughness, metallic,
                             clearcoat, clearcoatRoughness, sheen, sheenColour,
                             anisotropy, anisotropyRotation, T, B, N,V,sample.w);
-                        float attenuation = 1.0f / sample.distance * sample.distance;
+                        float attenuation = 1.0f / (sample.distance * sample.distance);
                         totalLight +=
                             brdfValue * sample.Le * cosThetaLight * attenuation / sample.pdf;
                     }
                 }
-                colour += totalLight / static_cast<float>(params.shadowSamples);
             }
-
+            colour += totalLight / static_cast<float>(params.shadowSamples);
         }
     }
     colour += emissive;

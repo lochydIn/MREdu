@@ -29,15 +29,17 @@ class Entity {
 
                 [[nodiscard]] const Material& getMaterial() const { return *material; }
 
+                [[nodiscard]] Material& editMaterial() const { return const_cast<Material&>(*material); }
+
                 void setMaterial(std::unique_ptr<Material>m) {material = std::move(m);}
 
                 void setTransform (const Transform& t) {
-                        std::cout << "setTransform called - position: ("
-             << t.position.x << "," << t.position.y << "," << t.position.z << ")" << std::endl;
                         transform = t;
                 }
 
                 [[nodiscard]] const Transform& getTransform() const { return transform; }
+
+                [[nodiscard]] Transform& editTransform() { return transform; }
 
                 [[nodiscard]] Ray rayToObjectSpace(const Ray& ray) const {
                         const glm::mat4 inverse = transform.getInverseMatrix();

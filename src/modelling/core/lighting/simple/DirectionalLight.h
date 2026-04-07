@@ -20,18 +20,36 @@ class DirectionalLight : public Light {
         [[nodiscard]] glm::vec3 getDirection() const {
             return -direction;
         }
-        [[nodiscard]] glm::vec3 getColour() const override {
+        void setDirection(const glm::vec3& newDirection) {
+            direction = newDirection;
+        }
+
+        [[nodiscard]] glm::vec3 getColour() override {
             return colour * brightness;
         }
 
+        void setColour(const glm::vec3 newColour) override {
+            colour = newColour;
+        }
+
+        float getIntensity() override {
+            return brightness;
+        }
+        void setIntensity(const float newIntensity) override {
+            brightness = newIntensity;
+        }
+
+
         [[nodiscard]] float getAngle() const {
             return angle;
+        }
+        void setAngle(const float newAngle) {
+            angle = newAngle;
         }
 
         static float getDistance() {
             return FLT_MAX; //Light is infinitely far away.
         }
-
 
 
     private:

@@ -119,8 +119,8 @@ class Cylinder : public Entity {
             for (int i = 0; i < 8; i++) {
                 glm::vec3 vertex(
                     (i & 1) ? localMax.x : localMin.y,
-                    (i & 2) ? localMax.x : localMin.y,
-                    (i & 4) ? localMax.x : localMin.y);
+                    (i & 2) ? localMax.y : localMin.y,
+                    (i & 4) ? localMax.z : localMin.z);
                 vertices[i] = glm::vec3(matrix * glm::vec4(vertex, 1.0f));
             }
             glm::vec3 worldMin = vertices[0];
