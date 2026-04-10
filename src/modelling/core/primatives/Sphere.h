@@ -16,6 +16,10 @@ class Sphere : public Entity {
         Sphere(const Sphere&) = delete;
         Sphere& operator=(const Sphere&) = delete;
 
+        [[nodiscard]] std::string getName() const override {
+            return "Sphere";
+        }
+
         bool intersect(const Ray& ray, Intersection& hit, const float tMin, const float tMax) const override {
             Ray localRay = rayToObjectSpace(ray);
             const float a = dot(localRay.direction , localRay.direction);

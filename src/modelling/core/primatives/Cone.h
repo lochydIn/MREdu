@@ -18,6 +18,10 @@ class Cone : public Entity {
 
         Cone& operator=(const Cone&) = delete;
 
+        [[nodiscard]] std::string getName() const override {
+            return "Cone";
+        }
+
         bool intersect (const Ray& ray, Intersection& hit, float tMin, float tMax) const override {
             Ray localRay = rayToObjectSpace(ray);
             glm::vec3 ro = localRay.origin;

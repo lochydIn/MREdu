@@ -22,6 +22,10 @@ class Mesh : public Entity {
             }
         }
 
+        [[nodiscard]] std::string getName() const override {
+            return "MeshObject";
+        }
+
         ~Mesh() override{
             for (const auto triangle : triangles) {
                 delete triangle;

@@ -25,6 +25,8 @@ class Entity {
                 virtual ~Entity() = default;
 
         //Key Methods
+                [[nodiscard]] virtual std::string getName() const { return "Entity"; }
+
                 virtual bool intersect(const Ray& ray, Intersection& hit, float tMin, float tMax) const = 0;
 
                 [[nodiscard]] const Material& getMaterial() const { return *material; }

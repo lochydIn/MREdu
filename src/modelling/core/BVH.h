@@ -34,8 +34,6 @@ class BVH {
             return intersectNode(root.get(), ray, tMin, hit);
         }
 
-
-
     private:
         std::unique_ptr<BVHNode> root;
         std::vector<Entity*> allEntities;

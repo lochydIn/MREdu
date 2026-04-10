@@ -142,7 +142,7 @@ glm::vec3 Shader::shade (const Scene& scene, const Intersection& hit, const Ray&
     glm::vec3 V = -glm::normalize(ray.direction);
     glm::vec3 surfaceColour = mat.getColour(hit.uv);
     float clearcoat = mat.clearcoat;
-    float clearcoatRoughness = mat.clearcoat;
+    float clearcoatRoughness = mat.clearcoatRoughness;
     float sheen = mat.sheen;
     glm::vec3 sheenColour = mat.sheenColour;
     float anisotropy = mat.anisotropy;
@@ -152,7 +152,7 @@ glm::vec3 Shader::shade (const Scene& scene, const Intersection& hit, const Ray&
     N = mat.getNormal(hit.uv,N);
     glm::vec3 emissive = mat.getEmissive(hit.uv);
     float ao = mat.getAO(hit.uv);
-    glm::vec3 colour = surfaceColour * 0.1f * ao; //Ambient Light
+    glm::vec3 colour = surfaceColour * 0.1f; //Ambient Light
 
     for (const auto& light : scene.getLights()) {
 

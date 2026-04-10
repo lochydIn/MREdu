@@ -42,9 +42,9 @@ Mesh* loadObjectMesh(const std::string& fileName, const std::shared_ptr<Material
                 tinyobj::index_t idx = shape.mesh.indices[index_offset + v];
 
                 //Position
-                float vx = attr.vertices[3 * idx.vertex_index + 0] * 15.0f;
-                float vy = attr.vertices[3 * idx.vertex_index + 1] * 15.0f;
-                float vz = attr.vertices[3 * idx.vertex_index + 2] * 15.0f;
+                float vx = attr.vertices[3 * idx.vertex_index + 0] * 40.0f;
+                float vy = attr.vertices[3 * idx.vertex_index + 1] * 40.0f;
+                float vz = attr.vertices[3 * idx.vertex_index + 2] * 40.0f;
                 auto vertex = glm::vec3(vx,vy,vz);
                 faceVertices.emplace_back(vertex);
                 //Vertex Normals

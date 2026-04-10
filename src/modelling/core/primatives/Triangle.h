@@ -16,6 +16,10 @@ class Triangle : public Entity {
             computeTangents();
         }
 
+        [[nodiscard]] std::string getName() const override {
+            return "Triangle";
+        }
+
         bool intersect(const Ray& ray, Intersection& hit, const float tMin, const float tMax) const override {
             constexpr float EPSILON = 0.00001f;
 

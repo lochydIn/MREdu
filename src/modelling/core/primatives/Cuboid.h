@@ -17,6 +17,10 @@ class Cuboid : public Entity {
 
         Cuboid& operator = (const Cuboid&) = delete;
 
+        [[nodiscard]] std::string getName() const override {
+            return "Cuboid";
+        }
+
         bool intersect(const Ray& ray, Intersection& hit, float tMin, float tMax) const override {
             Ray localRay = rayToObjectSpace(ray);
 
@@ -139,7 +143,7 @@ class Cuboid : public Entity {
         }
 
     private:
-        glm::vec3 min;
-        glm::vec3 max;
+        glm::vec3 min{};
+        glm::vec3 max{};
 
 };

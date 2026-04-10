@@ -29,12 +29,14 @@ public:
         if (ent != finiteEntities.end()) {
             finiteEntities.erase(ent);
             delete entity;
+            return;
         }
         auto plane = std::ranges::find(infiniteEntities, entity);
         if (ent != infiniteEntities.end()) {
             infiniteEntities.erase(plane);
             delete entity;
         }
+        resetBVH();
     };
 
 
@@ -46,8 +48,15 @@ public:
         auto li = std::ranges::find(lights, light);
         if (li != lights.end()) {
             lights.erase(li);
-            delete light;
         }
+        if (const auto entity = dynamic_cast<Entity*>(light)) {
+            auto ent = std::ranges::find(finiteEntities, entity);
+            if (ent != finiteEntities.end()) {
+                finiteEntities.erase(ent);
+            }
+        }
+        delete light;
+        resetBVH();
     };
 
     [[nodiscard]] std::vector<Light*> getLights() const {
@@ -91,7 +100,13 @@ public:
     void buildBVH() {
         if (!finiteEntities.empty()) {
             bvh = std::make_unique<BVH>(finiteEntities);
+        } else {
+            bvh.reset();
         }
+    }
+
+    void resetBVH() {
+        bvh.reset();
     }
 
 

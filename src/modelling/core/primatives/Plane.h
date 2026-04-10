@@ -13,6 +13,10 @@ class Plane : public Entity {
     Plane(const glm::vec3& position, const glm::vec3 normal, std::shared_ptr<Material> mat) :
     Entity(std::move(mat)), position(position),normal(normal) {}
 
+    [[nodiscard]] std::string getName() const override {
+        return "Plane";
+    }
+
     bool intersect(const Ray& ray, Intersection& hit, float tMin, float tMax) const override {
         // If intersecting ray is not parallel.
         if (const float denom = glm::dot(normal, ray.direction); glm::abs(glm::dot(normal, ray.direction)) > 0.0001f) {

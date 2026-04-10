@@ -1,10 +1,13 @@
 #include <chrono>
+#include <filesystem>
 #include <iostream>
 #include <vector>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <glad/glad.h>
+
+#include "imgui_internal.h"
 #include "../cmake-build-debug/_deps/glfw-src/include/GLFW/glfw3.h"
 #include "modelling/core/Scene.h"
 #include "modelling/core/Camera.h"
@@ -46,6 +49,12 @@ int currentWidth = INTERACTIVE_WIDTH;
 int currentHeight = INTERACTIVE_HEIGHT;
 QualityPreset currentQuality = INTERACTIVE;
 bool render = true;
+bool cancelRender = false;
+float cameraSpeed = 0.1f;
+bool cameraMode = false;
+enum ApplicationState {MENU, RUNNING};
+ApplicationState state = MENU;
+
 
 void framebuffer_size_callback(GLFWwindow* window, const int width, const int height) {
     glViewport(0, 0, width, height);
@@ -53,39 +62,51 @@ void framebuffer_size_callback(GLFWwindow* window, const int width, const int he
 }
 
 void key_callback(GLFWwindow* window, const int key, int scancode, const int action, int mods) {
-    if (action == GLFW_PRESS)
-    {
-        if (key == GLFW_KEY_I) {
-            currentWidth = INTERACTIVE_WIDTH;
-            currentHeight = INTERACTIVE_HEIGHT;
-            currentQuality = INTERACTIVE;
-            if (g_camera) {
-                g_camera->setAspect(static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
-                    currentWidth,currentHeight);
+    if (action == GLFW_PRESS) {
+        if (key == GLFW_KEY_C) {
+            cameraMode = !cameraMode;
+            glfwSetInputMode(window,GLFW_CURSOR, cameraMode ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+            if (cameraMode) {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                std::cout << "Camera mode ON" << std::endl;
+            } else {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                std::cout << "Camera mode OFF" << std::endl;
             }
-            render = true;
-
-        } else if (key == GLFW_KEY_P) {
-            currentWidth = PREVIEW_WIDTH;
-            currentHeight = PREVIEW_HEIGHT;
-            currentQuality = PREVIEW;
-            if (g_camera) {
-                g_camera->setAspect(static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
-                    currentWidth,currentHeight);
-                render = true;
-            }
-
-        } else if (key == GLFW_KEY_F) {
-            currentWidth = PRODUCTION_WIDTH;
-            currentHeight = PRODUCTION_HEIGHT;
-            currentQuality = PRODUCTION;
-            if (g_camera) {
-                g_camera->setAspect(static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
-                    currentWidth,currentHeight);
-                render = true;
-            }
+        } else if (key == GLFW_KEY_S) {
+            cancelRender = true;
         }
     }
+}
+
+void mouse_callback(GLFWwindow* window, const double xPos, const double yPos) {
+    ImGui_ImplGlfw_CursorPosCallback(window,xPos,yPos);
+    if (!cameraMode || state != RUNNING) return;
+
+    static int callCount = 0;
+    if (callCount++ < 10) {
+        std::cout << "Mouse callback called: " << xPos << ", " << yPos << std::endl;
+    }
+
+
+    static double lastX = PRODUCTION_WIDTH / 2.0;
+    static double lastY = PRODUCTION_WIDTH / 2.0;
+    static bool firstMouse = true;
+
+    if (firstMouse) {
+        lastX = xPos;
+        lastY = yPos;
+        firstMouse = false;
+    }
+
+    const float xOffset = (lastX - xPos) * 0.0005;
+    const float yOffset = (lastY - yPos) * 0.0005;
+
+    lastX = xPos;
+    lastY = yPos;
+
+    g_camera->look(xOffset,yOffset);
+    render = true;
 }
 
 // Simple fragment shader - just shows the texture
@@ -125,16 +146,18 @@ bool checkShaderCompile(const GLuint shader, const char* name) {
 
 void renderScene(const Scene& scene, const Camera& camera, const RenderParams& renderParams,
     std::vector<glm::vec3>& pixels, const int width, const int height) {
-
     const auto start = std::chrono::high_resolution_clock::now();
+    cancelRender = false;
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
+            glfwPollEvents();
+            if (cancelRender) {
+                std::cout << "Render cancelled." << std::endl;
+                return;
+            }
             const glm::vec3 colour = RayTracer::tracePixelHalton(scene,camera,static_cast<float>(x),
                 static_cast<float>(y),renderParams);
             pixels[y * width + x] = colour;
-        }
-        if (y % (height / 10) == 0 && height > 0) {
-            std::cout << (y * 100 / height) << "%" << std::endl;
         }
     }
     const auto end = std::chrono::high_resolution_clock::now();
@@ -165,6 +188,7 @@ int main(int argc, char* argv[]) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 460");
     glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
@@ -292,14 +316,27 @@ int main(int argc, char* argv[]) {
 
     render = false;
 
-    enum ApplicationState {MENU, RUNNING};
-    ApplicationState state = MENU;
+
+    bool uniformScale = false;
     bool showCustomRenderSettings = false;
-    bool customRenderSettings = false;
     Entity* selectedEntity = nullptr;
     Light* selectedLight = nullptr;
-    bool showEntityProperties = false;
-    bool showLightProperties = false;
+
+    std::vector<TexturePreset> texturePresets = {
+        {"Brick","src/assets/textures/Brick/BricksAlbedo.jpg",
+            "src/assets/textures/Brick/BricksRoughness.jpg",
+            "src/assets/textures/Brick/BricksNormalGL.jpg",
+            "src/assets/textures/Brick/BricksAmbientOcclusion.jpg"},
+        {"BlueCarpet","src/assets/textures/BlueCarpet/BlueCarpetAlbedo.jpg",
+    "src/assets/textures/BlueCarpet/BlueCarpetRoughness.jpg",
+    "src/assets/textures/BlueCarpet/NormalGL.jpg",
+    "src/assets/textures/BlueCarpet/BlueCarpetAO.jpg"},
+        {"TrianglePlating", "src/assets/textures/TriMetalPlate/TriMetalPlatesAlbedo.jpg",
+        "src/assets/textures/TriMetalPlate/TriMetalPlatesRoughness.jpg",
+            "src/assets/textures/TriMetalPlate/TriMetalPlatesNormalGL.jpg"}
+    };
+
+
 
     while (!glfwWindowShouldClose(window)) {
         ImGui_ImplOpenGL3_NewFrame();
@@ -313,6 +350,7 @@ int main(int argc, char* argv[]) {
 
             ImGui::SetCursorPosX(100);
             ImGui::Text("     MREdu");
+            ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
             ImGui::SetCursorPosX(100);
@@ -371,7 +409,7 @@ int main(int argc, char* argv[]) {
                 if (showCustomRenderSettings) {
                     ImGui::Indent();
                     ImGui::SliderInt("Primary Samples", &renderParams.primarySamples, 1, 64);
-                    ImGui::SliderInt("Shadow Samples", &renderParams.shadowSamples, 1, 128);
+                    ImGui::SliderInt("Shadow Samples", &renderParams.shadowSamples, 1, 256);
                     ImGui::SliderInt("Reflection Samples", &renderParams.reflectionSamples, 1, 32);
                     ImGui::SliderInt("Reflection Depth", &renderParams.maxDepth, 1, 16);
                     ImGui::Checkbox("Enable Soft Shadows", &renderParams.softShadows);
@@ -388,9 +426,11 @@ int main(int argc, char* argv[]) {
                 }
             }
             ImGui::End();
-            ImGui::SetNextWindowPos(ImVec2(PRODUCTION_WIDTH - 440,10));
-            ImGui::SetNextWindowSize(ImVec2(220,400));
-            ImGui::Begin("Objects (Click to add)");
+
+            ImGui::SetNextWindowPos(ImVec2(PRODUCTION_WIDTH - 310,10));
+            ImGui::Begin("Scene Explorer",nullptr,ImGuiWindowFlags_NoCollapse);
+
+            ImGui::BeginChild("Objects (Click to add)", ImVec2(0,300));
             if (ImGui::CollapsingHeader("Primitives", ImGuiTreeNodeFlags_DefaultOpen))
             {
                 if (ImGui::Button("Sphere")) {
@@ -406,19 +446,20 @@ int main(int argc, char* argv[]) {
                     scene.buildBVH();
                     render = true;
                 }
+                ImGui::SameLine();
                 if (ImGui::Button("Cylinder")) {
                     auto* cylinder = new Cylinder(0.5,1,std::make_shared<Material>());
                     scene.addEntity(cylinder);
                     scene.buildBVH();
                     render = true;
                 }
-                ImGui::SameLine();
                 if (ImGui::Button("Cone")) {
                     auto* cylinder = new Cone(1,0.5,std::make_shared<Material>());
                     scene.addEntity(cylinder);
                     scene.buildBVH();
                     render = true;
                 }
+                ImGui::SameLine();
                 if (ImGui::Button("Plane")) {
                     auto* plane = new Plane(glm::vec3(0.0f),
                         glm::vec3(0.0f,1.0f,0.0f),std::make_shared<Material>());
@@ -443,7 +484,6 @@ int main(int argc, char* argv[]) {
                     scene.buildBVH();
                     render = true;
                 }
-                ImGui::SameLine();
                 if (ImGui::Button("CuboidLight")) {
                     auto* cuboidLight = new CuboidLight();
                     scene.addEntity(cuboidLight);
@@ -451,6 +491,7 @@ int main(int argc, char* argv[]) {
                     scene.buildBVH();
                     render = true;
                 }
+                ImGui::SameLine();
                 if (ImGui::Button("CylinderLight")) {
                     auto* cylinderLight = new CylinderLight();
                     scene.addEntity(cylinderLight);
@@ -468,32 +509,34 @@ int main(int argc, char* argv[]) {
                 }
             }
 
-
-
             if (ImGui::CollapsingHeader("Assets", ImGuiTreeNodeFlags_DefaultOpen)) {
-                  //for (asset : assets) {
-                  //    std::string name = asset.name();
-                   //   if (ImGui::Button(name)) {
-
-                   //   }
-                  //}
+                  std::string assetsFolder = "src/assets/objects/";
+                for (const auto& file : std::filesystem::directory_iterator(assetsFolder)) {
+                    if (file.path().extension() == ".obj")
+                    {
+                        std::string name = file.path().filename().string();
+                        if (ImGui::Button(name.c_str())) {
+                            auto mesh = loadObjectMesh(assetsFolder + name, std::make_shared<Material>());
+                            scene.addEntity(mesh);
+                            scene.buildBVH();
+                            render = true;
+                        }
+                    }
+                }
             }
-            ImGui::End();
-
-            ImGui::SetNextWindowPos(ImVec2(PRODUCTION_WIDTH - 210,10));
-            ImGui::SetNextWindowSize(ImVec2(200,1000));
-            ImGui::Begin("Scene Explorer",nullptr,ImGuiWindowFlags_NoCollapse);
-
+            ImGui::EndChild();
             ImGui::Text("Scene Objects");
+            ImGui::Spacing();
             ImGui::Separator();
-            ImGui::BeginChild("ObjectList", ImVec2(0, currentHeight), true);
+            ImGui::Spacing();
+            ImGui::BeginChild("ObjectList");
             for (size_t i = 0; i < scene.getFiniteEntities().size(); ++i) {
                 Entity* entity = scene.getFiniteEntities()[i];
 
                 if (dynamic_cast<Light*>(entity)) {
                     continue;
                 }
-                std::string name = "Entity " + std::to_string(i);
+                std::string name = entity->getName() + " " + std::to_string(i);
                 if (ImGui::Selectable(name.c_str(), selectedEntity == entity)) {
                     selectedEntity = entity;
                     selectedLight = nullptr;
@@ -501,7 +544,7 @@ int main(int argc, char* argv[]) {
             }
             for (size_t i = 0; i < scene.getInfiniteEntities().size(); ++i) {
                 Entity* entity = scene.getInfiniteEntities()[i];
-                std::string name = "Entity " + std::to_string(i);
+                std::string name = entity->getName() + " " + std::to_string(i);
                 if (ImGui::Selectable(name.c_str(), selectedEntity == entity)) {
                     selectedEntity = entity;
                     selectedLight = nullptr;
@@ -526,97 +569,197 @@ int main(int argc, char* argv[]) {
             ImGui::End();
 
             if (selectedEntity) {
-                ImGui::SetNextWindowPos(ImVec2(PRODUCTION_WIDTH - 750,10));
-                ImGui::SetNextWindowSize(ImVec2(300,400));
-                ImGui::Begin("Entity Properties", nullptr, ImGuiWindowFlags_NoCollapse);
+                ImGui::SetNextWindowPos(ImVec2(1100,10));
+                ImGui::Begin("Entity Properties", nullptr);
                 Transform& t = selectedEntity->editTransform();
                 Material& mat = selectedEntity->editMaterial();
 
                 ImGui::Text("Transform");
+                ImGui::Spacing();
                 ImGui::Separator();
-                if (ImGui::DragFloat3("Position", &t.position.x,0.1f)) {
-                    render = true;
-                    scene.buildBVH();
+                ImGui::Spacing();
+                glm::vec3 pos = t.position;
+                glm::vec3 rot = t.rotation;
+                glm::vec3 scale = t.scale;
+                float uniformScaleFactor = 1.0f;
+                if (ImGui::SliderFloat3("Position", &t.position.x,-50.0f,50.0f,"%.1f")) {
+                    pos = t.position;
                 }
-                if (ImGui::DragFloat3("Rotation", &t.rotation.x,0.1f)) {
-                    render = true;
-                    scene.buildBVH();
+                if (ImGui::SliderFloat3("Rotation", &t.rotation.x,0.0f,360,"%.0f")) {
+                    rot = t.rotation;
                 }
-                if (ImGui::DragFloat3("Scale", &t.scale.x,0.1f,0.1,1000.0f)) {
+                if (ImGui::Button("Uniform Scale")) {
+                    uniformScale = !uniformScale;
+                }
+
+                if (uniformScale) {
+                    ImGui::SameLine();
+                    if (ImGui::SliderFloat("Scale", &uniformScaleFactor,0.0f,10.0f,"%.2f")) {
+                        t.scale = glm::vec3(uniformScaleFactor);
+                    }
+                } else {
+                    ImGui::SliderFloat3("Scale", &t.scale.x,0.01f,10,"%.2f");
+                }
+
+                if (ImGui::Button("Apply Transform")) {
                     render = true;
                     scene.buildBVH();
                 }
                 ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
                 ImGui::Text("Material");
+                ImGui::Spacing();
                 ImGui::Separator();
-                if (ImGui::ColorEdit3("Colour",&mat.colour.x)) render = true;
-                if (ImGui::SliderFloat("Roughness", &mat.roughness,0.0f,1.0f)) render = true;
-                if (ImGui::SliderFloat("Metallic", &mat.metallic,0.0f,1.0f)) render = true;
-                if (ImGui::SliderFloat("Reflectivity",&mat.reflectivity,0.0f,1.0f)) render = true;
-                if (ImGui::SliderFloat("IOR", &mat.iOR, 1.0f, 3.0f)) render = true;
-                if (ImGui::SliderFloat("Transparency", &mat.transparency,0.0f,1.0f)) render = true;
-                if (ImGui::ColorEdit3("Attenuation", &mat.attenuation.x)) render = true;
-                if (ImGui::SliderFloat("ClearCoat",&mat.clearcoat,0.0f,1.0f)) render = true;
+                ImGui::Spacing();
+                static auto tempMat  = selectedEntity->getMaterial();
+                ImGui::ColorEdit3("Colour",&tempMat.colour.x);
+                ImGui::SliderFloat("Roughness", &tempMat.roughness,0.0f,1.0f,"%.2f");
+                ImGui::SliderFloat("Metallic", &tempMat.metallic,0.0f,1.0f,"%.2f");
+                ImGui::SliderFloat("Reflectivity",&tempMat.reflectivity,0.0f,1.0f,"%.2f");
+                ImGui::SliderFloat("IOR", &tempMat.iOR, 1.0f, 3.0f,"%.2f");
+                ImGui::SliderFloat("Transparency", &tempMat.transparency,0.0f,1.0f,"%.2f");
+                ImGui::ColorEdit3("Attenuation", &tempMat.attenuation.x);
+                ImGui::SliderFloat("ClearCoat",&tempMat.clearcoat,0.0f,1.0f,"%.2f");
+                ImGui::SliderFloat("Clearcoat Roughness",&tempMat.clearcoatRoughness,
+                    0.0f,1.0f,"%.2f");
+                ImGui::SliderFloat("Anisotropy",&tempMat.anisotropy,0.0f,1.0f,"%.2f");
+                ImGui::SliderFloat("Anisotropy Rotation",&tempMat.anisotropyRotation,
+                    -180.0f,180.0f,"%.0f");
+                ImGui::SliderFloat("Sheen",&tempMat.sheen,0.0f,1.0f,"%.2f");
+                ImGui::ColorEdit3("Sheen Colour", &tempMat.sheenColour.x);
+                ImGui::Spacing();
+                if (ImGui::Button("Apply Material")) {
+                    mat = tempMat;
+                    render = true;
+                }
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
 
-                if (ImGui::SliderFloat("Clearcoat Roughness",&mat.clearcoatRoughness,
-                    0.0f,1.0f)) render = true;
-                if (ImGui::SliderFloat("Anisotropy",&mat.anisotropy,0.0f,1.0f)) render = true;
-                if (ImGui::SliderFloat("Anisotropy Rotation",&mat.anisotropyRotation,
-                    0.0f,180.0f)) render = true;
-                if (ImGui::SliderFloat("Sheen",&mat.sheen,0.0f,1.0f)) render = true;
-                if (ImGui::ColorEdit3("Sheen Colour", &mat.sheenColour.x)) render = true;
+                ImGui::Text("Textures");
+
+                ImGui::Spacing();
                 ImGui::Separator();
-                if (ImGui::Button("Delete Object", ImVec2(150,30))) {
-                    scene.removeEntity(selectedEntity);
+                ImGui::Spacing();
+                for (const auto& preset : texturePresets) {
+                    if (ImGui::Button( preset.name.c_str())) {
+                        mat.albedoMap = std::make_shared<Texture>(preset.albedoPath);
+                        mat.roughnessMap = std::make_shared<Texture>(preset.roughnessPath);
+                        mat.normalMap = std::make_shared<Texture>(preset.normalPath);
+                        mat.aoMap = std::make_shared<Texture>(preset.aoPath);
+                        if (preset.name == "Metal") {
+                            mat.metallic = 1.0f;
+                        } else {
+                            mat.metallic = 0.0f;
+                        }
+                        render = true;
+                    }
+                }
+                ImGui::Spacing();
+                ImGui::Spacing();
+                if (ImGui::Button("Remove Texture")) {
+                    mat.albedoMap = nullptr;
+                    mat.roughnessMap = nullptr;
+                    mat.normalMap = nullptr;
+                    mat.aoMap = nullptr;
+                    render = true;
+                }
+
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+                if (!dynamic_cast<Light*>(selectedEntity)) {
+                    if (ImGui::Button("Delete Object", ImVec2(150,30))) {
+                        scene.removeEntity(selectedEntity);
+                        scene.buildBVH();
+                        selectedEntity = nullptr;
+                        render = true;
+                    }
+                }
+                ImGui::End();
+            }
+            if (selectedLight) {
+                ImGui::SetNextWindowPos(ImVec2(1340,750));
+                ImGui::Begin("Light Properties", nullptr);
+                static glm::vec3 colour = selectedLight->getColour();
+                static float intensity = selectedLight->getIntensity();
+                if (ImGui::ColorEdit3("Colour",&colour.x)) {
+                    selectedLight->setColour(colour);
+                }
+                if (ImGui::SliderFloat("Intensity",&intensity,0.0f,100.0f,"%.0f")) {
+                    selectedLight->setIntensity(intensity);
+                }
+                if (auto pointLight = dynamic_cast<PointLight*>(selectedLight)) {
+                    static float radius = pointLight->getRadius();
+                    static glm::vec3 position = pointLight->getPosition();
+                    if (ImGui::SliderFloat("Radius",&radius,0.01f,1.0f,"%.2f")) {
+                        pointLight->setRadius(radius);
+                    }
+                    if (ImGui::DragFloat3("Position", &position.x)) {
+                        pointLight->setPosition(position);
+                    }
+                }
+                if (auto dirLight = dynamic_cast<DirectionalLight*>(selectedLight)) {
+                    static glm::vec3 tempDirection = dirLight->getDirection();
+                    if (ImGui::SliderFloat("XDir",&tempDirection.x,-1.0f,1.0f,"%.2f")) {
+                        dirLight->setDirection(glm::normalize(tempDirection));
+                    }
+                    if (ImGui::SliderFloat("YDir", &tempDirection.y,-1.0f,1.0f,"%.2f")) {
+                        dirLight->setDirection(glm::normalize(tempDirection));
+                    }
+                    if (ImGui::SliderFloat("ZDir", &tempDirection.z,-1.0f,1.0f,"%.2f")) {
+                        dirLight->setDirection(glm::normalize(tempDirection));
+                    }
+                }
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+                if (ImGui::Button("Apply Light Properties")) {
+                    render = true;
+                }
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+                if (ImGui::Button("Delete Light")) {
+                    scene.removeLight(selectedLight);
+                    scene.buildBVH();
+                    selectedLight = nullptr;
                     selectedEntity = nullptr;
                     render = true;
                 }
 
                 ImGui::End();
             }
-            if (selectedLight) {
-                ImGui::SetNextWindowPos(ImVec2(PRODUCTION_WIDTH - 650,420));
-                ImGui::SetNextWindowSize(ImVec2(200,400));
-                ImGui::Begin("Light Properties", nullptr);
-                glm::vec3 colour = selectedLight->getColour();
-                float intensity = selectedLight->getIntensity();
-                if (ImGui::ColorEdit3("Colour",&colour.x)) {
-                    selectedLight->setColour(colour);
-                    render = true;
-                }
-                if (ImGui::SliderFloat("Intensity",&intensity,0.0f,100.0f)) {
-                    selectedLight->setIntensity(intensity);
-                    render = true;
-                }
-                if (auto pointLight = dynamic_cast<PointLight*>(selectedLight)) {
-                    float radius = pointLight->getRadius();
-                    glm::vec3 position = pointLight->getPosition();
-                    if (ImGui::SliderFloat("Radius",&radius,0.01f,1.0f)) {
-                        pointLight->setRadius(radius);
-                        render = true;
-                    }
-                    if (ImGui::DragFloat3("Position", &position.x)) {
-                        pointLight->setPosition(position);
-                        render = true;
-                    }
-                }
-                if (auto dirLight = dynamic_cast<DirectionalLight*>(selectedLight)) {
-                    glm::vec3 direction = dirLight->getDirection();
-                    if (ImGui::SliderFloat3("Direction",&direction.x,0.0f,1.0f)) {
-                        dirLight->setDirection(direction);
-                        render = true;
-                    }
-                }
-                if (ImGui::Button("Delete Light", ImVec2(150,30))) {
-                    scene.removeEntity(dynamic_cast<Entity*>(selectedLight));
-                    scene.removeLight(selectedLight);
-                    selectedLight = nullptr;
-                    render = true;
-                }
-
-                ImGui::End();
+        }
+        if (cameraMode && state == RUNNING) {
+            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+               camera.moveZ(cameraSpeed);
+                render = true;
+            }
+            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+                camera.moveZ(-cameraSpeed);
+                render = true;
+            }
+            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+                camera.moveX(-cameraSpeed);
+                render = true;
+            }
+            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+                camera.moveX(cameraSpeed);
+                render = true;
+            }
+            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+                camera.moveY(cameraSpeed);
+                render = true;
+            }
+            if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+                camera.moveY(-cameraSpeed);
+                render = true;
             }
         }
+
+
 
         if (render) {
             if (!showCustomRenderSettings) {
@@ -632,15 +775,19 @@ int main(int argc, char* argv[]) {
             }
             pixels.resize(currentWidth * currentHeight);
 
+
             glBindTexture(GL_TEXTURE_2D, texture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F,
-                currentWidth, currentHeight, 0 , GL_RGB, GL_FLOAT, nullptr);
+            if (!cancelRender) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, currentWidth, currentHeight,
+                    0, GL_RGB, GL_FLOAT,nullptr);
+            }
 
             renderScene(scene,camera,renderParams,pixels,currentWidth,currentHeight);
 
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
-                currentWidth, currentHeight, GL_RGB, GL_FLOAT,pixels.data());
-
+            if (!cancelRender) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, currentWidth, currentHeight,
+                    0, GL_RGB, GL_FLOAT,pixels.data());
+            }
             render = false;
         }
 

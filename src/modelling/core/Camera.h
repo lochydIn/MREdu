@@ -45,8 +45,6 @@ public:
         const glm::vec3 rayDirection = glm::normalize(forward + (u * scale * aspect * right) + (v * scale * up));
         return Ray(position,rayDirection);
     }
-
-
     // Getters & Setters
     void setPosition(const glm::vec3& m_position) {
         position = m_position;
@@ -55,6 +53,7 @@ public:
     [[nodiscard]] glm::vec3 getPosition() const {
         return position;
     }
+
     void setTarget(const glm::vec3& m_view) {
         target = m_view;
     }
@@ -75,6 +74,38 @@ public:
         aspect = aspectRatio;
         width = m_width;
         height = m_height;
+    }
+
+    [[nodiscard]] glm::vec3 getForward() const {
+        return glm::normalize(target - position);
+    }
+    [[nodiscard]] glm::vec3 getRight() const {
+        return glm::normalize(glm::cross(getForward(), glm::vec3(0.0f, 1.0f, 0.0f)));
+    }
+
+    void moveZ (const float amount) {
+        position += getForward() * amount;
+        target = getForward() * amount;
+    }
+    void moveX (const float amount) {
+        position += getRight() * amount;
+        target = getRight() * amount;
+    }
+    void moveY (const float amount) {
+        position.y += amount;
+        target.y += amount;
+    }
+
+    void look(const float yaw, float const pitch) {
+        glm::vec3 direction = target - position;
+        glm::mat4 yawMatrix = glm::rotate(glm::mat4(1.0f), yaw, glm::vec3(0.0f, 1.0f, 0.0f));
+        direction = glm::vec3(yawMatrix * glm::vec4(direction, 0.0f));
+
+        glm::vec3 right = glm::normalize(glm::cross(direction, glm::vec3(0.0f, 1.0f, 0.0f)));
+        glm::mat4 pitchMatrix = glm::rotate(glm::mat4(1.0f), pitch, right);
+        direction = glm::vec3(pitchMatrix * glm::vec4(direction, 0.0f));
+        target = position + direction;
+        std::cout << "New target: (" << target.x << ", " << target.y << ", " << target.z << ")" << std::endl;
     }
 
 private:

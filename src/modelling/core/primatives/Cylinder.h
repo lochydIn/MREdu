@@ -18,6 +18,10 @@ class Cylinder : public Entity {
 
         Cylinder& operator=(const Cylinder&) = delete;
 
+        [[nodiscard]] std::string getName() const override {
+            return "Cylinder";
+        }
+
         bool intersect(const Ray& ray, Intersection& hit, const float tMin, const float tMax) const override {
             Ray localRay = rayToObjectSpace(ray);
             const glm::vec3 rO = localRay.origin;

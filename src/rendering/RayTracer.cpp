@@ -80,7 +80,6 @@ glm::vec3 RayTracer::trace(const Scene& scene, const Ray& ray, const int depth,
     glm::vec3 incident = ray.direction;
     glm::vec3 hitPoint = intersection.point;
     glm::vec3 normal = intersection.normal;
-    glm::vec3 viewDir = -ray.direction;
     float epsilon = params.epsilon;
 
     // If transparent.
@@ -114,6 +113,8 @@ glm::vec3 RayTracer::trace(const Scene& scene, const Ray& ray, const int depth,
             glm::vec3 refractionDirection = glm::refract(incident, normal, eta);
             glm::vec3 refractionRayOrigin = outside ? hitPoint - epsilon * normal : hitPoint + epsilon * normal;
             refractionColour = trace(scene,Ray(refractionRayOrigin,refractionDirection),depth+1,sampleIndex,params);
+
+
         }
 
         glm::vec3 reflectionRayDir = generateReflectionDirection(ray.direction,normal,

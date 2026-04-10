@@ -21,3 +21,11 @@ class Texture {
         std::vector<glm::vec3> pixels;
 
 };
+
+struct TexturePreset {
+    std::string name;
+    std::string albedoPath;
+    std::string roughnessPath;
+    std::string normalPath;
+    std::string aoPath;
+};
