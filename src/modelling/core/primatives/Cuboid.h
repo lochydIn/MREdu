@@ -54,8 +54,10 @@ class Cuboid : public Entity {
             }
 
             float t = tEnter;
-            if (t < tMin) t = tExit;
-            if (t > tMax || t < tMin) return false;
+            if (t < tMin) {
+                t = tExit;
+            }
+            if (t < tMin || t > tMax) return false;
 
             hit.distance = t;
             hit.point = localRay.positionAt(t);

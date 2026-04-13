@@ -50,11 +50,19 @@ class SphereLight : public AreaLight {
             const float c = dot(localRay.origin, localRay.origin) - 1.0f;
             float discriminant = b * b - 4 * a * c;
 
-            if (discriminant >= std::numeric_limits<float>::epsilon()) {   // If the ray intersects with the sphere.
+            if (discriminant >= 0) {   // If the ray intersects with the sphere.
                 // Calculate the intersection.
-                float t = (-b - std::sqrt(discriminant)) / (2 * a);
+                float t1 = (-b - std::sqrt(discriminant)) / (2 * a);
+                float t2 = (-b + std::sqrt(discriminant)) / (2 * a);
+                float t;
 
-                if (t > 0) { // If the intersection is within bounds.
+                if (t1 > tMin) {
+                    t = t1;
+                } else {
+                    t = t2;
+                }
+
+                if (t > tMin && t < tMax) { // If the intersection is within bounds.
                     hit.distance = t;
                     hit.point = localRay.positionAt(t);
                     hit.normal = glm::normalize(hit.point);
@@ -68,6 +76,7 @@ class SphereLight : public AreaLight {
 
                     objectIntersectionToWorldSpace(hit);
                     hit.setFrontSurface(ray,hit.normal);
+
                     hit.entity = const_cast<Entity*>(dynamic_cast<const Entity*>(this));
                     return true;
                 }

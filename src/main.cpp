@@ -1,6 +1,7 @@
 #include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <memory>
 #include <vector>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -232,7 +233,6 @@ int main(int argc, char* argv[]) {
         glm::vec3(0.0f, 0.0f, -2.0f),60,currentWidth, currentHeight
     );
     g_camera = &camera;
-
     scene.buildBVH();
 
 
@@ -411,10 +411,10 @@ int main(int argc, char* argv[]) {
                     ImGui::SliderInt("Primary Samples", &renderParams.primarySamples, 1, 64);
                     ImGui::SliderInt("Shadow Samples", &renderParams.shadowSamples, 1, 256);
                     ImGui::SliderInt("Reflection Samples", &renderParams.reflectionSamples, 1, 32);
-                    ImGui::SliderInt("Reflection Depth", &renderParams.maxDepth, 1, 16);
+                    ImGui::SliderInt("Reflection Depth", &renderParams.maxDepth, 1, 32);
                     ImGui::Checkbox("Enable Soft Shadows", &renderParams.softShadows);
                     ImGui::Checkbox("Russian Roulette Ray Culling", &renderParams.russianRoulette);
-                    ImGui::SliderInt("Roulette Start Depth", &renderParams.russianRouletteStartDepth,0, 10);
+                    ImGui::SliderInt("Roulette Start Depth", &renderParams.russianRouletteStartDepth,0, 32);
                     ImGui::Checkbox("Reduce Samples With Depth", &renderParams.reduceSamplesWithDepth);
                     ImGui::ColorEdit3("Background Colour", &renderParams.backgroundColor.x);
                     ImGui::SliderInt("Screen Width",&currentWidth, 256, 1920);
@@ -444,7 +444,7 @@ int main(int argc, char* argv[]) {
                     auto* cuboid = new Cuboid(std::make_shared<Material>());
                     scene.addEntity(cuboid);
                     scene.buildBVH();
-                    render = true;
+                    render = false;
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Cylinder")) {
@@ -582,25 +582,37 @@ int main(int argc, char* argv[]) {
                 glm::vec3 rot = t.rotation;
                 glm::vec3 scale = t.scale;
                 float uniformScaleFactor = 1.0f;
-                if (ImGui::SliderFloat3("Position", &t.position.x,-50.0f,50.0f,"%.1f")) {
-                    pos = t.position;
-                }
-                if (ImGui::SliderFloat3("Rotation", &t.rotation.x,0.0f,360,"%.0f")) {
-                    rot = t.rotation;
-                }
-                if (ImGui::Button("Uniform Scale")) {
-                    uniformScale = !uniformScale;
-                }
-
-                if (uniformScale) {
-                    ImGui::SameLine();
-                    if (ImGui::SliderFloat("Scale", &uniformScaleFactor,0.0f,10.0f,"%.2f")) {
-                        t.scale = glm::vec3(uniformScaleFactor);
+                Plane* p = nullptr;
+                if ((p = dynamic_cast<Plane*>(selectedEntity))) {
+                    glm::vec3 normal = p->getNormal();
+                    glm::vec3 pPos = p->getPosition();
+                    if (ImGui::DragFloat3("Position",&pPos.x,0.01f,-100.0f, 100.0f,"%.0f")) {
+                        p->setPosition(pPos);
                     }
+                    if (ImGui::DragFloat3("Normal",&normal.x,0.01f,-1.0f, 1.0f,"%.0f")) {
+                        p->setNormal(normal);
+                    }
+                    selectedEntity = p;
                 } else {
-                    ImGui::SliderFloat3("Scale", &t.scale.x,0.01f,10,"%.2f");
-                }
+                    if (ImGui::DragFloat3("Position",&t.position.x,0.3f,-100.0f, 100.0f,"%.0f")) {
+                        pos = t.position;
+                    }
+                    if (ImGui::SliderFloat3("Rotation", &t.rotation.x,0.0f,360,"%.0f")) {
+                        rot = t.rotation;
+                    }
+                    if (ImGui::Button("Uniform Scale")) {
+                        uniformScale = !uniformScale;
+                    }
 
+                    if (uniformScale) {
+                        ImGui::SameLine();
+                        if (ImGui::SliderFloat("Scale", &uniformScaleFactor,0.0f,10.0f,"%.2f")) {
+                            t.scale = glm::vec3(uniformScaleFactor);
+                        }
+                    } else {
+                        ImGui::SliderFloat3("Scale", &t.scale.x,0.01f,10,"%.2f");
+                    }
+                }
                 if (ImGui::Button("Apply Transform")) {
                     render = true;
                     scene.buildBVH();
@@ -612,25 +624,23 @@ int main(int argc, char* argv[]) {
                 ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::Spacing();
-                static auto tempMat  = selectedEntity->getMaterial();
-                ImGui::ColorEdit3("Colour",&tempMat.colour.x);
-                ImGui::SliderFloat("Roughness", &tempMat.roughness,0.0f,1.0f,"%.2f");
-                ImGui::SliderFloat("Metallic", &tempMat.metallic,0.0f,1.0f,"%.2f");
-                ImGui::SliderFloat("Reflectivity",&tempMat.reflectivity,0.0f,1.0f,"%.2f");
-                ImGui::SliderFloat("IOR", &tempMat.iOR, 1.0f, 3.0f,"%.2f");
-                ImGui::SliderFloat("Transparency", &tempMat.transparency,0.0f,1.0f,"%.2f");
-                ImGui::ColorEdit3("Attenuation", &tempMat.attenuation.x);
-                ImGui::SliderFloat("ClearCoat",&tempMat.clearcoat,0.0f,1.0f,"%.2f");
-                ImGui::SliderFloat("Clearcoat Roughness",&tempMat.clearcoatRoughness,
+                ImGui::ColorEdit3("Colour",&mat.colour.x);
+                ImGui::SliderFloat("Roughness", &mat.roughness,0.0f,1.0f,"%.2f");
+                ImGui::SliderFloat("Metallic", &mat.metallic,0.0f,1.0f,"%.2f");
+                ImGui::SliderFloat("Reflectivity",&mat.reflectivity,0.0f,1.0f,"%.2f");
+                ImGui::SliderFloat("IOR", &mat.iOR, 1.0f, 3.0f,"%.2f");
+                ImGui::SliderFloat("Transparency", &mat.transparency,0.0f,1.0f,"%.2f");
+                ImGui::ColorEdit3("Attenuation", &mat.attenuation.x);
+                ImGui::SliderFloat("ClearCoat",&mat.clearcoat,0.0f,1.0f,"%.2f");
+                ImGui::SliderFloat("Clearcoat Roughness",&mat.clearcoatRoughness,
                     0.0f,1.0f,"%.2f");
-                ImGui::SliderFloat("Anisotropy",&tempMat.anisotropy,0.0f,1.0f,"%.2f");
-                ImGui::SliderFloat("Anisotropy Rotation",&tempMat.anisotropyRotation,
+                ImGui::SliderFloat("Anisotropy",&mat.anisotropy,0.0f,1.0f,"%.2f");
+                ImGui::SliderFloat("Anisotropy Rotation",&mat.anisotropyRotation,
                     -180.0f,180.0f,"%.0f");
-                ImGui::SliderFloat("Sheen",&tempMat.sheen,0.0f,1.0f,"%.2f");
-                ImGui::ColorEdit3("Sheen Colour", &tempMat.sheenColour.x);
+                ImGui::SliderFloat("Sheen",&mat.sheen,0.0f,1.0f,"%.2f");
+                ImGui::ColorEdit3("Sheen Colour", &mat.sheenColour.x);
                 ImGui::Spacing();
                 if (ImGui::Button("Apply Material")) {
-                    mat = tempMat;
                     render = true;
                 }
                 ImGui::Spacing();
@@ -648,11 +658,6 @@ int main(int argc, char* argv[]) {
                         mat.roughnessMap = std::make_shared<Texture>(preset.roughnessPath);
                         mat.normalMap = std::make_shared<Texture>(preset.normalPath);
                         mat.aoMap = std::make_shared<Texture>(preset.aoPath);
-                        if (preset.name == "Metal") {
-                            mat.metallic = 1.0f;
-                        } else {
-                            mat.metallic = 0.0f;
-                        }
                         render = true;
                     }
                 }

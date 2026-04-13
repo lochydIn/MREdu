@@ -17,6 +17,21 @@ class Plane : public Entity {
         return "Plane";
     }
 
+    [[nodiscard]] glm::vec3 getNormal() const {
+        return normal;
+    }
+    void setNormal(const glm::vec3& newNormal) {
+        normal = newNormal;
+    }
+
+    [[nodiscard]] glm::vec3 getPosition() const {
+        return position;
+    }
+
+    void setPosition(const glm::vec3& newPosition) {
+        position = newPosition;
+    }
+
     bool intersect(const Ray& ray, Intersection& hit, float tMin, float tMax) const override {
         // If intersecting ray is not parallel.
         if (const float denom = glm::dot(normal, ray.direction); glm::abs(glm::dot(normal, ray.direction)) > 0.0001f) {

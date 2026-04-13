@@ -47,8 +47,27 @@ glm::vec3 RayTracer::generateReflectionDirection(const glm::vec3& incident, cons
     return glm::normalize(perfectReflection + perturbation);
 }
 
+glm::vec3 RayTracer::generateRefractionDirection(const glm::vec3& incident,const glm::vec3& normal,const float ior,
+    const float roughness,const bool entering, const int sampleIndex, const std::array<int, 2>& haltonBases) {
+    const float eta = entering ? (1.0f / ior) : ior;
+    const glm::vec3 perfectRefraction = glm::refract(incident,normal,eta);
+    if (glm::length(perfectRefraction) < 0.001f || roughness <= 0.0f) {
+        return perfectRefraction;
+    }
+    const glm::vec3 tangent = glm::normalize(glm::cross(normal,
+        glm::abs(normal.x) > 0.9f ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0)));
+    const glm::vec3 bitangent = glm::cross(normal, tangent);
+
+    const float jitter1 = halton(sampleIndex,haltonBases[0]) * 2.0f - 1.0f;
+    const float jitter2 = halton(sampleIndex,haltonBases[1]) * 2.0f - 1.0f;
+
+    const float roughnessScale = roughness * roughness;
+    const glm::vec3 peturbation = (tangent * jitter1 + bitangent * jitter2) * roughnessScale;
+    return glm::normalize(perfectRefraction + peturbation);
+}
+
 glm::vec3 RayTracer::trace(const Scene& scene, const Ray& ray, const int depth,
-    const int sampleIndex, const TraceParams& params) {
+    const int sampleIndex, const TraceParams& params, glm::vec3 entryPoint, bool inObject) {
     static int rayCounter = 0;
     rayCounter++;
 
@@ -65,33 +84,38 @@ glm::vec3 RayTracer::trace(const Scene& scene, const Ray& ray, const int depth,
         }
     }
 
-    const Intersection intersection = scene.intersect(ray);
+    const Intersection hit = scene.intersect(ray);
+
 
     // Object infinitely far away or behind camera.
-    if (intersection.distance < 0) {
+    if (hit.distance < 0) {
         return params.backgroundColor;
     }
 
     glm::vec3 intersectionColour(0.0f);
-    const Material& mat = intersection.entity->getMaterial();
+    const Material& mat = hit.entity->getMaterial();
     bool reflective = mat.reflectivity > 0.0f;
     bool refractive = mat.transparency > 0.0f;
 
     glm::vec3 incident = ray.direction;
-    glm::vec3 hitPoint = intersection.point;
-    glm::vec3 normal = intersection.normal;
+    glm::vec3 hitPoint = hit.point;
+    glm::vec3 normal = hit.normal;
     float epsilon = params.epsilon;
-
+    bool entering = hit.frontSurface;
     // If transparent.
     if (refractive) {
         glm::vec3 refractionColour(0.0f);
         glm::vec3 reflectionColour(0.0f);
+        if (entering) {
+            entryPoint = hitPoint;
+            inObject = true;
+        }
         // Fresnel Bit:
         float cosInternal = glm::clamp(glm::dot(incident,normal),-1.0f,1.0f);
         float iorI = 1; //The index of refraction for the incident medium.
         float iorT = mat.iOR; //The index of refraction for the transmitted medium.
 
-        if (cosInternal > 0.0f) { std::swap(iorI,iorT);} // Swap values depending on entry or exit.
+        if (!entering) { std::swap(iorI,iorT);} // Swap values depending on entry or exit.
         float eta = iorI / iorT;
 
         float sinTransmitted = iorI / iorT * glm::sqrt(glm::max((1-cosInternal * cosInternal),0.0f));
@@ -106,37 +130,58 @@ glm::vec3 RayTracer::trace(const Scene& scene, const Ray& ray, const int depth,
             float  rP = ((iorI * cosInternal)-(iorT * cosTransmitted)) / ((iorI * cosInternal)+(iorT * cosTransmitted));
             kR = (rS * rS + rP * rP) / 2;
         }
-        bool outside = glm::dot(incident,normal) < 0;
-        // Compute refraction if it is not a case of total internal reflection.
+
 
         if (kR < 1) { // if not a case of internal reflection.
-            glm::vec3 refractionDirection = glm::refract(incident, normal, eta);
-            glm::vec3 refractionRayOrigin = outside ? hitPoint - epsilon * normal : hitPoint + epsilon * normal;
-            refractionColour = trace(scene,Ray(refractionRayOrigin,refractionDirection),depth+1,sampleIndex,params);
+            int numRefractionSamples = (mat.roughness > 0.0f) ? params.reflectionSamples : 1;
+            glm::vec3 totalRefraction(0.0f);
+            for (int i = 0; i < numRefractionSamples; i++) {
+                glm::vec3 refractionDirection;
+                if (mat.roughness > 0.0f) {
+                    refractionDirection = generateRefractionDirection(incident, normal, mat.iOR,
+                        mat.roughness, entering,sampleIndex * params.reflectionSamples + i,
+                        params.haltonBases);
+                } else {
+                    refractionDirection = glm::refract(incident, normal, eta);
+                }
+                glm::vec3 refractionRayOrigin = entering ? hitPoint + epsilon * normal : hitPoint - epsilon * normal;
+                totalRefraction += trace(scene,Ray(refractionRayOrigin,refractionDirection), depth + 1,
+                    sampleIndex * numRefractionSamples + i, params, entryPoint, inObject);
+            }
+            refractionColour = totalRefraction / static_cast<float>(numRefractionSamples);
 
+            if (!entering && inObject) {
+                float distance = glm::length(hitPoint - entryPoint);
+                refractionColour = refractionColour * glm::exp(-mat.attenuation * distance);
+                inObject = false;
+            }
 
         }
-
-        glm::vec3 reflectionRayDir = generateReflectionDirection(ray.direction,normal,
+        glm::vec3 totalReflection(0.0f);
+        for (int i = 0; i < params.reflectionSamples; i++) {
+            glm::vec3 reflectionRayDir = generateReflectionDirection(ray.direction,normal,
             mat.roughness,sampleIndex,params.haltonBases);
-        glm::vec3 reflectionRayOrigin = outside ? hitPoint + epsilon * normal : hitPoint - epsilon * normal;
-        reflectionColour = trace(scene,Ray(reflectionRayOrigin,reflectionRayDir),depth+1,sampleIndex,params);
-
-        intersectionColour += reflectionColour * kR + refractionColour * (1 - kR);
+            glm::vec3 reflectionRayOrigin = entering ? hitPoint + epsilon * normal : hitPoint - epsilon * normal;
+            totalReflection += trace(scene, Ray(reflectionRayOrigin,reflectionRayDir),
+                depth+1,sampleIndex * params.reflectionSamples + 1,params);
+        }
+        reflectionColour = totalReflection / static_cast<float>(params.reflectionSamples);
+        intersectionColour += reflectionColour * kR + refractionColour * (1.0f - kR);
 
     } else if (reflective) { // If just reflective.
-        glm::vec3 directColour = Shader::shade(scene,intersection,ray,sampleIndex,params);
-
-
-        glm::vec3 reflectionRayDir = generateReflectionDirection(ray.direction,normal,
-            mat.roughness,sampleIndex,params.haltonBases);
-        glm::vec3 reflectionRayOrigin = hitPoint + epsilon * normal;
-        glm::vec3 reflectionColour = trace(scene,Ray(reflectionRayOrigin,reflectionRayDir),depth+1,sampleIndex,params);
-
-        intersectionColour = directColour * 0.2f + reflectionColour * mat.colour * 0.8f;
+        glm::vec3 directColour = Shader::shade(scene, hit, ray, sampleIndex, params);
+        glm::vec3 totalReflection(0.0f);
+        for (int i = 0; i < params.reflectionSamples; i++) {
+            glm::vec3 reflectionRayDir = generateReflectionDirection(ray.direction,normal,
+                mat.roughness,sampleIndex,params.haltonBases);
+            glm::vec3 reflectionRayOrigin = entering ? hitPoint + epsilon * normal : hitPoint - epsilon * normal;
+            totalReflection += trace(scene, Ray(reflectionRayOrigin, reflectionRayDir), depth+1, sampleIndex, params);
+        }
+        totalReflection /= static_cast<float>(params.reflectionSamples);
+        intersectionColour = directColour * 0.2f + totalReflection * mat.getColour(hit.uv) * 0.8f;
 
     } else { // Opaque and Unreflective.
-        intersectionColour = Shader::shade(scene,intersection,ray,sampleIndex,params);
+        intersectionColour = Shader::shade(scene,hit,ray,sampleIndex,params);
     }
     return intersectionColour;
 }
@@ -147,8 +192,7 @@ glm::vec3 RayTracer::tracePixelHalton(const Scene& scene, const Camera& camera,
 {
     glm::vec3 colour(0.0f);
 
-    for (int i =0; i < params.primarySamples; i++)
-    {
+    for (int i =0; i < params.primarySamples; i++) {
         const float jitterX = halton(i,2) - 0.5f;
         const float jitterY = halton(i,3) - 0.5f;
 
