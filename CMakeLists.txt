@@ -48,10 +48,9 @@ add_executable(MREdu
         src/modelling/core/lighting/Light.h
         src/modelling/core/lighting/AreaLight.h
         src/rendering/structs/RenderParams.h
-        src/modelling/core/lighting/area/RectangleLight.h
         src/modelling/core/lighting/LightSample.h
-        src/modelling/core/BoundingBox.h
-        src/modelling/core/BVH.h
+        src/rendering/structs/BoundingBox.h
+        src/rendering/BVH.h
         src/modelling/core/primatives/Cuboid.h
         src/modelling/core/primatives/Cone.h
         src/modelling/core/lighting/area/CuboidLight.h
@@ -59,9 +58,9 @@ add_executable(MREdu
         src/modelling/core/lighting/area/CylinderLight.h
         src/tiny_obj_loader.h
         src/modelling/core/primatives/Triangle.h
-        src/modelling/core/complex/Mesh.h
-        src/modelling/core/complex/MeshLoader.h
-        src/modelling/core/complex/MeshLoader.cpp
+        src/modelling/core/meshes/Mesh.h
+        src/modelling/core/meshes/MeshLoader.h
+        src/modelling/core/meshes/MeshLoader.cpp
         src/modelling/core/components/Texture.h
         src/modelling/core/components/stb_image.h
         src/modelling/core/components/Texture.cpp

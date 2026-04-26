@@ -4,9 +4,10 @@
 
 #pragma once
 #include <glm/glm.hpp>
-class Light {
-public:
 
+class Light
+{
+public:
     Light() = default;
     virtual ~Light() = default;
     [[nodiscard]] virtual glm::vec3 getColour() = 0;

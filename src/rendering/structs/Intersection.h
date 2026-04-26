@@ -7,7 +7,8 @@
 #include "Ray.h"
 class Entity;
 
-struct Intersection {
+struct Intersection
+{
     glm::vec3 point; //Hit pos
     glm::vec3 normal; // Surface Normal
     bool frontSurface;
@@ -19,11 +20,13 @@ struct Intersection {
 
     void setFrontSurface(const Ray& ray, const glm::vec3& outwardNormal) {
         frontSurface = glm::dot(ray.direction, outwardNormal) < 0;
-        if (frontSurface) {
+        if (frontSurface)
+        {
             normal = outwardNormal;
-        } else {
+        }
+        else
+        {
             normal = -outwardNormal;
         }
     }
-
 };

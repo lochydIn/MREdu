@@ -5,34 +5,41 @@
 #pragma once
 #include "../../rendering/structs/Intersection.h"
 #include "Entity.h"
-#include "BVH.h"
+#include "../../rendering/BVH.h"
 #include "lighting/Light.h"
 #include "primatives/Plane.h"
 
 
-class Scene {
+class Scene
+{
 public:
     Scene() = default;
     ~Scene() = default;
 
-    void addEntity(Entity* entity) {
-        if (dynamic_cast<Plane*>(entity)) {
+    void addEntity(Entity* entity)
+    {
+        if (dynamic_cast<Plane*>(entity))
+        {
             infiniteEntities.push_back(entity);
-        } else {
+        }
+        else
+        {
             finiteEntities.push_back(entity);
         }
-
     };
 
-    void removeEntity(const Entity* entity) {
+    void removeEntity(const Entity* entity)
+    {
         auto ent = std::ranges::find(finiteEntities, entity);
-        if (ent != finiteEntities.end()) {
+        if (ent != finiteEntities.end())
+        {
             finiteEntities.erase(ent);
             delete entity;
             return;
         }
         auto plane = std::ranges::find(infiniteEntities, entity);
-        if (ent != infiniteEntities.end()) {
+        if (ent != infiniteEntities.end())
+        {
             infiniteEntities.erase(plane);
             delete entity;
         }
@@ -40,18 +47,23 @@ public:
     };
 
 
-    void addLight(Light* light) {
+    void addLight(Light* light)
+    {
         lights.push_back(light);
     };
 
-    void removeLight(Light* light) {
+    void removeLight(Light* light)
+    {
         auto li = std::ranges::find(lights, light);
-        if (li != lights.end()) {
+        if (li != lights.end())
+        {
             lights.erase(li);
         }
-        if (const auto entity = dynamic_cast<Entity*>(light)) {
+        if (const auto entity = dynamic_cast<Entity*>(light))
+        {
             auto ent = std::ranges::find(finiteEntities, entity);
-            if (ent != finiteEntities.end()) {
+            if (ent != finiteEntities.end())
+            {
                 finiteEntities.erase(ent);
             }
         }
@@ -59,25 +71,30 @@ public:
         resetBVH();
     };
 
-    [[nodiscard]] std::vector<Light*> getLights() const {
+    [[nodiscard]] std::vector<Light*> getLights() const
+    {
         return lights;
     };
 
-    [[nodiscard]] std::vector<Entity*> getFiniteEntities() const {
+    [[nodiscard]] std::vector<Entity*> getFiniteEntities() const
+    {
         return finiteEntities;
     }
 
-    [[nodiscard]] std::vector<Entity*> getInfiniteEntities() const {
+    [[nodiscard]] std::vector<Entity*> getInfiniteEntities() const
+    {
         return infiniteEntities;
     }
 
-    [[nodiscard]] Intersection intersect(const Ray& ray) const {
+    [[nodiscard]] Intersection intersect(const Ray& ray) const
+    {
         Intersection hit;
         hit.distance = -1;
         float closest = 1e30f;
         constexpr float tMin = 0.001f;
 
-        if (bvh) {
+        if (bvh)
+        {
             Intersection bvhHit;
             if (bvh->intersect(ray, bvhHit) && bvhHit.distance < closest)
             {
@@ -86,10 +103,12 @@ public:
             }
         }
 
-        for (auto plane : infiniteEntities) {
+        for (auto plane : infiniteEntities)
+        {
             Intersection planeHit;
-            if (plane->intersect(ray, planeHit,tMin,closest) &&
-                planeHit.distance < closest && planeHit.distance > 0) {
+            if (plane->intersect(ray, planeHit, tMin, closest) &&
+                planeHit.distance < closest && planeHit.distance > 0)
+            {
                 closest = planeHit.distance;
                 hit = planeHit;
             }
@@ -97,19 +116,22 @@ public:
         return hit;
     }
 
-    void buildBVH() {
-        if (!finiteEntities.empty()) {
+    void buildBVH()
+    {
+        if (!finiteEntities.empty())
+        {
             bvh = std::make_unique<BVH>(finiteEntities);
-        } else {
+        }
+        else
+        {
             bvh.reset();
         }
     }
 
-    void resetBVH() {
+    void resetBVH()
+    {
         bvh.reset();
     }
-
-
 
 private:
     std::vector<Entity*> finiteEntities;

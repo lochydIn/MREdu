@@ -8,47 +8,75 @@
 #include "../Entity.h"
 
 
-class Plane : public Entity {
-    public:
+class Plane : public Entity
+{
+public:
     Plane(const glm::vec3& position, const glm::vec3 normal, std::shared_ptr<Material> mat) :
-    Entity(std::move(mat)), position(position),normal(normal) {}
+        Entity(std::move(mat)), position(position), normal(normal)
+    {
+    }
 
-    [[nodiscard]] std::string getName() const override {
+    [[nodiscard]] std::string getName() const override
+    {
         return "Plane";
     }
 
-    [[nodiscard]] glm::vec3 getNormal() const {
+    [[nodiscard]] glm::vec3 getNormal() const
+    {
         return normal;
     }
-    void setNormal(const glm::vec3& newNormal) {
+
+    void setNormal(const glm::vec3& newNormal)
+    {
         normal = newNormal;
     }
 
-    [[nodiscard]] glm::vec3 getPosition() const {
+    [[nodiscard]] glm::vec3 getPosition() const
+    {
         return position;
     }
 
-    void setPosition(const glm::vec3& newPosition) {
+    void setPosition(const glm::vec3& newPosition)
+    {
         position = newPosition;
     }
 
-    bool intersect(const Ray& ray, Intersection& hit, float tMin, float tMax) const override {
+    bool intersect(const Ray& ray, Intersection& hit, float tMin, float tMax) const override
+    {
+        float denom = glm::dot(normal, ray.direction);
         // If intersecting ray is not parallel.
-        if (const float denom = glm::dot(normal, ray.direction); glm::abs(glm::dot(normal, ray.direction)) > 0.0001f) {
-
+        if (glm::abs(denom) > 0.00001f)
+        {
             float t = glm::dot(position - ray.origin, normal) / denom;
 
-            if (t > tMin && t < tMax) {
+            if (t > tMin && t < tMax)
+            {
                 hit.point = ray.origin + t * ray.direction;
                 hit.normal = (denom < 0.0f) ? normal : -normal;
-                hit.setFrontSurface(ray,hit.normal);
-                hit.tangent = glm::vec3(1,0,0);
-                hit.bitangent = glm::vec3(0,0,1);
-                hit.bitangent = glm::cross(hit.normal, hit.tangent);
+                hit.setFrontSurface(ray, hit.normal);
+
+
                 const glm::vec3 local = hit.point - position;
-                constexpr float tileSize = 1.0f;
-                hit.uv.x = glm::fract(local.x / tileSize + 0.5f);
-                hit.uv.y = glm::fract(local.y / tileSize + 0.5f);
+                glm::vec3 absNormal = glm::abs(normal);
+                constexpr float tileSize = 10.0f;
+                if (absNormal.y > 0.9f) {
+                    hit.uv.x = glm::fract(local.x / tileSize + 0.5f);
+                    hit.uv.y = glm::fract(local.z / tileSize + 0.5f);
+                    hit.tangent = glm::vec3(1, 0, 0);
+                    hit.bitangent = glm::vec3(0, 0, 1);
+                } else if (absNormal.x > 0.9f) {
+                    hit.uv.x = glm::fract(local.y / tileSize + 0.5f);
+                    hit.uv.y = glm::fract(local.z / tileSize + 0.5f);
+                    hit.tangent = glm::vec3(0, 1, 0);
+                    hit.bitangent = glm::vec3(0, 0, 1);
+                } else {
+                    hit.uv.x = glm::fract(local.x / tileSize + 0.5f);
+                    hit.uv.y = glm::fract(local.y / tileSize + 0.5f);
+                    hit.tangent = glm::vec3(1, 0, 0);
+                    hit.bitangent = glm::vec3(0, 1, 0);
+                }
+
+                hit.bitangent = glm::cross(hit.normal, hit.tangent);
                 hit.distance = t;
                 hit.entity = const_cast<Plane*>(this);
                 return true;
@@ -57,7 +85,8 @@ class Plane : public Entity {
         return false;
     }
 
-    [[nodiscard]] BoundingBox getBoundingBox() const override {
+    [[nodiscard]] BoundingBox getBoundingBox() const override
+    {
         const auto bB = BoundingBox(glm::vec3(-LARGE_BOUND), glm::vec3(LARGE_BOUND));
         return bB;
     }

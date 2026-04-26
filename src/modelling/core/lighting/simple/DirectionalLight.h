@@ -6,55 +6,68 @@
 #include "../Light.h"
 #include "glm/vec3.hpp"
 
-class DirectionalLight : public Light {
-    public:
+class DirectionalLight : public Light
+{
+public:
+    DirectionalLight(const glm::vec3& direction,
+                     const glm::vec3& colour, float intensity, float angle)
+        : direction(glm::normalize(direction)), colour(colour), brightness(intensity), angle(angle)
+    {
+    }
 
-        DirectionalLight(const glm::vec3& direction,
-            const glm::vec3& colour, float intensity, float angle)
-        : direction (glm::normalize(direction)), colour(colour), brightness(intensity), angle(angle) {}
+    ~DirectionalLight() override = default;
+    DirectionalLight(DirectionalLight&&) = delete;
+    DirectionalLight& operator =(DirectionalLight&&) = delete;
 
-        ~DirectionalLight() override = default;
-        DirectionalLight(DirectionalLight&&) = delete;
-        DirectionalLight& operator = (DirectionalLight&&) = delete;
+    [[nodiscard]] glm::vec3 getDirection() const
+    {
+        return -direction;
+    }
 
-        [[nodiscard]] glm::vec3 getDirection() const {
-            return -direction;
-        }
-        void setDirection(const glm::vec3& newDirection) {
-            direction = newDirection;
-        }
+    void setDirection(const glm::vec3& newDirection)
+    {
+        direction = newDirection;
+    }
 
-        [[nodiscard]] glm::vec3 getColour() override {
-            return colour * brightness;
-        }
+    [[nodiscard]] glm::vec3 getColour() override
+    {
+        return colour * brightness;
+    }
 
-        void setColour(const glm::vec3 newColour) override {
-            colour = newColour;
-        }
+    void setColour(const glm::vec3 newColour) override
+    {
+        colour = newColour;
+    }
 
-        float getIntensity() override {
-            return brightness;
-        }
-        void setIntensity(const float newIntensity) override {
-            brightness = newIntensity;
-        }
+    float getIntensity() override
+    {
+        return brightness;
+    }
 
-
-        [[nodiscard]] float getAngle() const {
-            return angle;
-        }
-        void setAngle(const float newAngle) {
-            angle = newAngle;
-        }
-
-        static float getDistance() {
-            return FLT_MAX; //Light is infinitely far away.
-        }
+    void setIntensity(const float newIntensity) override
+    {
+        brightness = newIntensity;
+    }
 
 
-    private:
-        glm::vec3 direction;
-        glm::vec3 colour;
-        float brightness;
-        float angle;
+    [[nodiscard]] float getAngle() const
+    {
+        return angle;
+    }
+
+    void setAngle(const float newAngle)
+    {
+        angle = newAngle;
+    }
+
+    static float getDistance()
+    {
+        return FLT_MAX; //Light is infinitely far away.
+    }
+
+private:
+    glm::vec3 direction;
+    glm::vec3 colour;
+    float brightness;
+    float angle;
 };
