@@ -45,8 +45,8 @@ struct QualityPreset
 };
 
 constexpr QualityPreset INTERACTIVE = {1, 1, 1, 3};
-constexpr QualityPreset PREVIEW = {4, 64, 4, 6};
-constexpr QualityPreset PRODUCTION = {16, 64, 8, 12};
+constexpr QualityPreset PREVIEW = {4, 8, 4, 4};
+constexpr QualityPreset PRODUCTION = {8, 64, 12, 8};
 
 int currentWidth = INTERACTIVE_WIDTH;
 int currentHeight = INTERACTIVE_HEIGHT;
@@ -626,7 +626,7 @@ int main(int argc, char* argv[])
                     ImGui::Indent();
                     ImGui::SliderInt("Primary Samples", &renderParams.primarySamples, 1, 64);
                     ImGui::SliderInt("Shadow Samples", &renderParams.shadowSamples, 1, 256);
-                    ImGui::SliderInt("Reflection and Refraction Samples", &renderParams.reflectionSamples, 1, 32);
+                    ImGui::SliderInt("Reflection and Refraction Samples", &renderParams.reflectionSamples, 1, 256);
                     ImGui::SliderInt("Reflection Depth", &renderParams.maxDepth, 1, 32);
                     ImGui::Checkbox("Enable Soft Shadows", &renderParams.softShadows);
                     ImGui::Checkbox("Russian Roulette Ray Culling", &renderParams.russianRoulette);
@@ -1018,8 +1018,8 @@ int main(int argc, char* argv[])
             {
                 ImGui::SetNextWindowPos(ImVec2(1340, 750));
                 ImGui::Begin("Light Properties", nullptr);
-                static glm::vec3 colour = selectedLight->getColour();
-                static float intensity = selectedLight->getIntensity();
+                glm::vec3 colour = selectedLight->getColour();
+                float intensity = selectedLight->getIntensity();
                 if (ImGui::ColorEdit3("Colour", &colour.x))
                 {
                     selectedLight->setColour(colour);
@@ -1028,10 +1028,11 @@ int main(int argc, char* argv[])
                 {
                     selectedLight->setIntensity(intensity);
                 }
+
                 if (auto pointLight = dynamic_cast<PointLight*>(selectedLight))
                 {
-                    static float radius = pointLight->getRadius();
-                    static glm::vec3 position = pointLight->getPosition();
+                    float radius = pointLight->getRadius();
+                    glm::vec3 position = pointLight->getPosition();
                     if (ImGui::SliderFloat("Radius", &radius, 0.01f, 1.0f, "%.2f"))
                     {
                         pointLight->setRadius(radius);
@@ -1043,18 +1044,23 @@ int main(int argc, char* argv[])
                 }
                 if (auto dirLight = dynamic_cast<DirectionalLight*>(selectedLight))
                 {
-                    static glm::vec3 tempDirection = dirLight->getDirection();
-                    if (ImGui::SliderFloat("XDir", &tempDirection.x, -1.0f, 1.0f, "%.2f"))
+                    static float angle = dirLight->getAngle();
+                    static glm::vec3 direction = dirLight->getDirection();
+                    if (ImGui::DragFloat("Angle", &angle, 0.01f, 0.05f,30.0f,"%.2f"))
                     {
-                        dirLight->setDirection(glm::normalize(tempDirection));
+                        dirLight->setAngle(angle);
                     }
-                    if (ImGui::SliderFloat("YDir", &tempDirection.y, -1.0f, 1.0f, "%.2f"))
+                   if (ImGui::DragFloat("DirX", &direction.x, 0.1,-1,1))
                     {
-                        dirLight->setDirection(glm::normalize(tempDirection));
+                        dirLight->setDirection(direction);
                     }
-                    if (ImGui::SliderFloat("ZDir", &tempDirection.z, -1.0f, 1.0f, "%.2f"))
+                    if (ImGui::DragFloat("DirY", &direction.y, 0.1,-1,1))
                     {
-                        dirLight->setDirection(glm::normalize(tempDirection));
+                        dirLight->setDirection(direction);
+                    }
+                    if (ImGui::DragFloat("DirZ", &direction.z, 0.1,-1,1))
+                    {
+                        dirLight->setDirection(direction);
                     }
                 }
                 ImGui::Spacing();

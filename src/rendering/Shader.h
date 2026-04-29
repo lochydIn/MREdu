@@ -16,6 +16,8 @@ public:
     static glm::vec3 shade(const Scene& scene, const Intersection& hit,
                            const Ray& ray, int sampleIndex, const TraceParams& params);
 
+    static glm::vec3 fresnelSchlick(const glm::vec3& surfaceColour, float metallic, float reflective, float nDotV);
+
 private:
     static float distributionGGX(float nDotH, float hDotT, float hDotB,
                                  float ax, float ay);
@@ -23,8 +25,6 @@ private:
     static float distributionGGXIsotropic(float nDotH, float roughness);
 
     static float geometryShading(float nDotL, float nDotV, float roughness);
-
-    static glm::vec3 fresnelSchlick(const glm::vec3& surfaceColour, float metallic, float reflective, float nDotV);
 
     static glm::vec3 bRDF(glm::vec3 surfaceColour, float roughness, float metallic, float reflective,
                           float clearcoat, float clearcoatRoughness,

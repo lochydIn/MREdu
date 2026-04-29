@@ -103,19 +103,19 @@ glm::vec3 RayTracer::trace(const Scene& scene, const Ray& ray, const int depth,
 
     glm::vec3 intersectionColour(0.0f);
     const Material& mat = intersection.entity->getMaterial();
-    bool reflective = mat.reflectivity > 0.0f;
-    bool refractive = mat.transparency > 0.0f;
-
+    bool isTransparent = mat.transparency > 0.0f;
+    glm::vec3 colour = mat.getColour(intersection.uv);
+    float metallic = mat.getMetallic(intersection.uv);
+    float roughness = mat.getRoughness(intersection.uv);
     glm::vec3 incident = ray.direction;
     glm::vec3 hitPoint = intersection.point;
     glm::vec3 normal = intersection.normal;
-    glm::vec3 viewDir = -ray.direction;
     float epsilon = params.epsilon;
 
     // If transparent.
-    if (refractive) {
-        glm::vec3 refractionColour(0.0f);
-        glm::vec3 reflectionColour(0.0f);
+    if (isTransparent) {
+        glm::vec3 refractionColour;
+        glm::vec3 reflectionColour;
         // Fresnel Bit:
         float cosInternal = glm::clamp(glm::dot(incident,normal),-1.0f,1.0f);
         float iorI = 1; //The index of refraction for the incident medium.
@@ -140,15 +140,15 @@ glm::vec3 RayTracer::trace(const Scene& scene, const Ray& ray, const int depth,
         // Compute refraction if it is not a case of total internal reflection.
 
         if (kR < 1) { // if not a case of internal reflection.
-            int numRefractionSamples = (mat.roughness > 0.0f) ? params.reflectionSamples : 1;
+            int numRefractionSamples = (roughness > 0.0f) ? params.reflectionSamples : 1;
             glm::vec3 totalRefraction(0.0f);
 
             for (int i = 0; i < numRefractionSamples; i++)
             {
                 glm::vec3 refractionDirection;
-                if (mat.roughness > 0.0f)
+                if (roughness > 0.0f)
                 {
-                    refractionDirection = generateRefractionDirection(incident, normal, mat.iOR, mat.roughness, outside,
+                    refractionDirection = generateRefractionDirection(incident, normal, mat.iOR, roughness, outside,
                         sampleIndex * numRefractionSamples + i, params.haltonBases);
                 } else
                 {
@@ -164,7 +164,7 @@ glm::vec3 RayTracer::trace(const Scene& scene, const Ray& ray, const int depth,
         glm::vec3 totalReflection(0.0f);
         for (int i = 0; i < params.reflectionSamples; i++)
         {
-            glm::vec3 reflectionDirection = generateReflectionDirection(incident,normal,mat.roughness,
+            glm::vec3 reflectionDirection = generateReflectionDirection(incident,normal,roughness,
                 sampleIndex * params.reflectionSamples + i,params.haltonBases);
             glm::vec3 reflectionRayOrigin = outside ? hitPoint - epsilon * normal : hitPoint + epsilon * normal;
             totalReflection += trace(scene,Ray(reflectionRayOrigin,reflectionDirection),depth + 1,
@@ -172,20 +172,26 @@ glm::vec3 RayTracer::trace(const Scene& scene, const Ray& ray, const int depth,
         }
         reflectionColour = totalReflection / static_cast<float>(params.reflectionSamples);
         intersectionColour += reflectionColour * kR + refractionColour * (1 - kR);
-
-    } else if (reflective) { // If just reflective.
+    } else {
         glm::vec3 directColour = Shader::shade(scene,intersection,ray,sampleIndex,params);
-
-
-        glm::vec3 reflectionRayDir = generateReflectionDirection(ray.direction,normal,
-            mat.roughness,sampleIndex,params.haltonBases);
-        glm::vec3 reflectionRayOrigin = hitPoint + epsilon * normal;
-        glm::vec3 reflectionColour = trace(scene,Ray(reflectionRayOrigin,reflectionRayDir),depth+1,sampleIndex,params);
-
-        intersectionColour = directColour * 0.2f + reflectionColour * mat.colour * 0.8f;
-
-    } else { // Opaque and Unreflective.
-        intersectionColour = Shader::shade(scene,intersection,ray,sampleIndex,params);
+        if (metallic > 0.0f || mat.reflectivity > 0.0f) {
+            glm::vec3 totalReflection;
+            for (int i = 0; i < params.reflectionSamples; i++) {
+                glm::vec3 reflectionDirection = generateReflectionDirection(incident,normal,roughness,
+                    sampleIndex * params.reflectionSamples + i, params.haltonBases);
+                glm::vec3 reflectionRayOrigin = hitPoint + epsilon * normal;
+                totalReflection += trace(scene,Ray(reflectionRayOrigin,reflectionDirection),depth + 1,
+                    sampleIndex * params.reflectionSamples + i,params);
+            }
+            totalReflection = totalReflection / static_cast<float>(params.reflectionSamples);
+            float nDotV = glm::max(glm::dot(-ray.direction,normal),0.0f);
+            glm::vec3 F = Shader::fresnelSchlick(colour,
+                metallic,mat.reflectivity,nDotV);
+            intersectionColour = directColour * (glm::vec3(1.0f) - F) + totalReflection * F;
+        } else
+        {
+            intersectionColour = directColour;
+        }
     }
     return intersectionColour;
 }

@@ -21,12 +21,14 @@ public:
 
     [[nodiscard]] glm::vec3 getDirection() const
     {
-        return -direction;
+        return direction;
     }
 
     void setDirection(const glm::vec3& newDirection)
     {
-        direction = newDirection;
+        direction.x = -newDirection.x;
+        direction.y = -newDirection.y;
+        direction.z = -newDirection.z;
     }
 
     [[nodiscard]] glm::vec3 getColour() override
