@@ -15,6 +15,4 @@ public:
     [[nodiscard]] virtual float getIntensity() = 0;
     virtual void setIntensity(float intensity) = 0;
 
-    Light(const Light&) = delete;
-    Light& operator=(const Light&) = delete;
 };

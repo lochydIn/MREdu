@@ -41,12 +41,14 @@ public:
     bool intersect(const Ray& ray, Intersection& hit, const float tMin, const float tMax) const override
     {
         const Ray localRay = rayToObjectSpace(ray);
+
         if (meshBVH->intersect(localRay, hit))
         {
             objectIntersectionToWorldSpace(hit);
             return true;
         }
-        return false;
+       return false;
+
     }
 
     [[nodiscard]] BoundingBox getBoundingBox() const override

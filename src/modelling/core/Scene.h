@@ -102,7 +102,6 @@ public:
                 hit = bvhHit;
             }
         }
-
         for (auto plane : infiniteEntities)
         {
             Intersection planeHit;

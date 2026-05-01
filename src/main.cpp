@@ -7,6 +7,10 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <glad/glad.h>
+#include <thread>
+#include <atomic>
+#include <future>
+#include <mutex>
 
 #include "imgui_internal.h"
 #include "../cmake-build-debug/_deps/glfw-src/include/GLFW/glfw3.h"
@@ -51,11 +55,18 @@ constexpr QualityPreset PRODUCTION = {8, 64, 12, 8};
 int currentWidth = INTERACTIVE_WIDTH;
 int currentHeight = INTERACTIVE_HEIGHT;
 QualityPreset currentQuality = INTERACTIVE;
+
 bool render = true;
-bool cancelRender = false;
+std::atomic isRendering{false};
+std::atomic renderProgress{0.0f};
+float lastRenderTime = 0.0f;
+std::atomic cancelRender{false};
+std::vector<glm::vec3> renderedPixels;
+std::mutex pixelsMutex;
+
 float cameraSpeed = 0.5f;
 bool cameraMode = false;
-
+std::mutex sceneMutex;
 enum ApplicationState { MENU, RUNNING };
 ApplicationState state = MENU;
 
@@ -161,12 +172,16 @@ bool checkShaderCompile(const GLuint shader, const char* name)
     }
     return true;
 }
-
+// Original Render Function Before Multithreading
 void renderScene(const Scene& scene, const Camera& camera, const RenderParams& renderParams,
-                 std::vector<glm::vec3>& pixels, const int width, const int height)
+                 std::vector<glm::vec3>& pixels, const int width, const int height, float& outProgress, float& outTimeTaken)
 {
     const auto start = std::chrono::high_resolution_clock::now();
     cancelRender = false;
+
+    const int totalPixels = width * height;
+    int pixelsProcessed = 0;
+
     for (int y = 0; y < height; y++)
     {
         for (int x = 0; x < width; x++)
@@ -175,16 +190,75 @@ void renderScene(const Scene& scene, const Camera& camera, const RenderParams& r
             if (cancelRender)
             {
                 std::cout << "Render cancelled." << std::endl;
+                outProgress = 0.0f;
+                outTimeTaken = 0.0f;
                 return;
             }
             const glm::vec3 colour = RayTracer::tracePixelHalton(scene, camera, static_cast<float>(x),
                                                                  static_cast<float>(y), renderParams);
             pixels[y * width + x] = colour;
+            pixelsProcessed++;
+            outProgress = static_cast<float>(pixelsProcessed) / static_cast<float>(totalPixels);
         }
     }
     const auto end = std::chrono::high_resolution_clock::now();
-    const auto duration_sec = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-    std::cout << "Rendered in: " << duration_sec.count() << " seconds" << std::endl;
+    const auto duration_sec = std::chrono::duration_cast<std::chrono::duration<float>>(end - start);
+    outTimeTaken = duration_sec.count();
+}
+// Current Render Function to use all CPU cores
+void renderSceneAsync(const Scene& scene, const Camera& camera, const RenderParams& renderParams,
+                 std::vector<glm::vec3>& pixels, const int width, const int height)
+{
+    const auto start = std::chrono::high_resolution_clock::now();
+    cancelRender = false;
+    renderProgress = 0.0f;
+    const int totalPixels = width * height;
+    std::atomic pixelsProcessed{0};
+    const int numThreads = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
+    std::vector<std::thread> threads;
+    threads.reserve(numThreads);
+
+    const int rowsPerThread = height / numThreads;
+
+    for (int t = 0; t < numThreads; t++)
+    {
+        int startY = t * rowsPerThread;
+        int endY = (t == numThreads - 1) ? height : startY + rowsPerThread;
+
+        threads.emplace_back([&, startY, endY, t]()
+        {
+            int pixelsInThread = 0;
+            for (int y = startY; y < endY; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    if (cancelRender) return;
+                    const glm::vec3 colour = RayTracer::tracePixelHalton(scene, camera,
+                        static_cast<float>(x), static_cast<float>(y), renderParams);
+                    pixels[y * width + x] = colour;
+                    pixelsProcessed++;
+                    pixelsInThread++;
+                    renderProgress = static_cast<float>(pixelsProcessed) / static_cast<float>(totalPixels);
+                }
+            }
+        });
+    }
+
+    for (auto& thread : threads)
+    {
+        if (thread.joinable()) thread.join();
+    }
+
+    const auto end = std::chrono::high_resolution_clock::now();
+    const auto duration_sec = std::chrono::duration_cast<std::chrono::duration<float>>(end - start);
+    lastRenderTime = duration_sec.count();
+
+    int writtenPixels = 0;
+    for (int i = 0; i < totalPixels; i++) {
+        if (pixels[i] != glm::vec3(0.0f)) {
+            writtenPixels++;
+        }
+    }
 }
 
 int main(int argc, char* argv[])
@@ -247,9 +321,10 @@ int main(int argc, char* argv[])
     // Scene Setup
     Scene scene;
     Camera camera(
-        glm::vec3(0.0f, 0.0f, 10.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f), 60, currentWidth, currentHeight
+        glm::vec3(0.0f, 0.0f, 8.0f),
+        glm::vec3(0.0f, 0.0f, 0.0f), 70, currentWidth, currentHeight
     );
+
     g_camera = &camera;
     scene.buildBVH();
 
@@ -537,9 +612,14 @@ int main(int argc, char* argv[])
         ""}
     };
 
+    std::future<void> renderFuture;
+    bool needsTextureUpdate = false;
+    std::vector<glm::vec3> newPixels;
+    int newWidth = 0, newHeight = 0;
 
     while (!glfwWindowShouldClose(window))
     {
+
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -560,6 +640,8 @@ int main(int argc, char* argv[])
             {
                 state = RUNNING;
                 render = true;
+                isRendering = false;
+                needsTextureUpdate = false;
             }
             ImGui::Spacing();
             ImGui::SetCursorPosX(100);
@@ -571,6 +653,25 @@ int main(int argc, char* argv[])
         }
         else if (state == RUNNING)
         {
+            ImGui::SetNextWindowPos(ImVec2(10,640));
+            ImGui::Begin("Render Status");
+            if (isRendering) {
+                ImGui::Text("Rendering...");
+                float progress = renderProgress.load();
+                ImGui::ProgressBar(progress,ImVec2(0.0f,0.0f));
+                ImGui::Text("Progress: %.1f%%", progress * 100.0f);
+                ImGui::Text("Press 'S' to cancel");
+            } else
+            {
+                ImGui::Text("Ready to Render");
+                if (lastRenderTime > 0.0f)
+                {
+                    ImGui::Text("Previous render time: %.2f seconds", lastRenderTime);
+                }
+            }
+            ImGui::End();
+
+
             ImGui::SetNextWindowPos(ImVec2(10, 10));
             ImGui::Begin("Render Settings");
             if (ImGui::CollapsingHeader("Mode", ImGuiTreeNodeFlags_DefaultOpen))
@@ -686,7 +787,7 @@ int main(int argc, char* argv[])
 
             bool changed = false;
 
-            // Input with step buttons (users can type or use up/down arrows)
+            // Input with step buttons.
             ImGui::Text("Position");
             changed |= ImGui::InputFloat("X", &pos.x, 0.1f, 1.0f);
             changed |= ImGui::InputFloat("Y", &pos.y, 0.1f, 1.0f);
@@ -700,6 +801,7 @@ int main(int argc, char* argv[])
             ImGui::Text("Field of View");
             changed |= ImGui::InputFloat("FOV",&fov,1.0f,5.0f,"%.1f");
             if (changed) {
+                std::lock_guard lock(sceneMutex);
                 camera.setPosition(pos);
                 camera.setTarget(tgt);
                 camera.setFov(fov);
@@ -714,6 +816,7 @@ int main(int argc, char* argv[])
             {
                 if (ImGui::Button("Sphere"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     auto* sphere = new Sphere(std::make_shared<Material>());
                     scene.addEntity(sphere);
                     scene.buildBVH();
@@ -722,6 +825,7 @@ int main(int argc, char* argv[])
                 ImGui::SameLine();
                 if (ImGui::Button("Cuboid"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     auto* cuboid = new Cuboid(std::make_shared<Material>());
                     scene.addEntity(cuboid);
                     scene.buildBVH();
@@ -730,6 +834,7 @@ int main(int argc, char* argv[])
                 ImGui::SameLine();
                 if (ImGui::Button("Cylinder"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     auto* cylinder = new Cylinder(0.5, 1, std::make_shared<Material>());
                     scene.addEntity(cylinder);
                     scene.buildBVH();
@@ -737,6 +842,7 @@ int main(int argc, char* argv[])
                 }
                 if (ImGui::Button("Cone"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     auto* cylinder = new Cone(1, 0.5, std::make_shared<Material>());
                     scene.addEntity(cylinder);
                     scene.buildBVH();
@@ -745,6 +851,7 @@ int main(int argc, char* argv[])
                 ImGui::SameLine();
                 if (ImGui::Button("Plane"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     auto* plane = new Plane(glm::vec3(0.0f),
                                             glm::vec3(0.0f, 1.0f, 0.0f), std::make_shared<Material>());
                     scene.addEntity(plane);
@@ -756,6 +863,7 @@ int main(int argc, char* argv[])
             {
                 if (ImGui::Button("DirectionalLight"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     auto* light = new DirectionalLight(glm::vec3(0.0f, -1.0f, 0.0f),
                                                        glm::vec3(1.0f), 1.0f, 0.05f);
                     scene.addLight(light);
@@ -765,6 +873,7 @@ int main(int argc, char* argv[])
                 ImGui::SameLine();
                 if (ImGui::Button("PointLight"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     auto* pointLight = new PointLight(glm::vec3(0.0f, 0.0f, 0.0f),
                                                       glm::vec3(1.0f), 1.0f, 1.0f);
                     scene.addLight(pointLight);
@@ -773,6 +882,7 @@ int main(int argc, char* argv[])
                 }
                 if (ImGui::Button("CuboidLight"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     auto* cuboidLight = new CuboidLight();
                     scene.addEntity(cuboidLight);
                     scene.addLight(cuboidLight);
@@ -782,6 +892,7 @@ int main(int argc, char* argv[])
                 ImGui::SameLine();
                 if (ImGui::Button("CylinderLight"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     auto* cylinderLight = new CylinderLight();
                     scene.addEntity(cylinderLight);
                     scene.addLight(cylinderLight);
@@ -790,6 +901,7 @@ int main(int argc, char* argv[])
                 }
                 if (ImGui::Button("SphereLight"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     auto* sphereLight = new SphereLight();
                     scene.addEntity(sphereLight);
                     scene.addLight(sphereLight);
@@ -808,6 +920,7 @@ int main(int argc, char* argv[])
                         std::string name = file.path().filename().string();
                         if (ImGui::Button(name.c_str()))
                         {
+                            std::lock_guard lock(sceneMutex);
                             auto mesh = loadObjectMesh(assetsFolder + name, std::make_shared<Material>());
                             scene.addEntity(mesh);
                             scene.buildBVH();
@@ -900,12 +1013,13 @@ int main(int argc, char* argv[])
                     ImGui::InputFloat("Y", &t.position.y, 0.1f, 1.0f,"%.1f");
                     ImGui::InputFloat("Z", &t.position.z, 0.1f, 1.0f,"%.1f");
                     ImGui::SliderFloat3("Rotation", &t.rotation.x, 0.0f, 360, "%.0f");
-                    ImGui::InputFloat("ScaleX", &t.scale.x, 0.01f, 1.0f, "%.2f");
-                    ImGui::InputFloat("ScaleY", &t.scale.y, 0.01f, 1.0f, "%.2f");
-                    ImGui::InputFloat("ScaleZ", &t.scale.z, 0.01f, 1.0f, "%.2f");
+                    ImGui::InputFloat("ScaleX", &t.scale.x, 0.001f, 1.0f, "%.4f");
+                    ImGui::InputFloat("ScaleY", &t.scale.y, 0.001f, 1.0f, "%.4f");
+                    ImGui::InputFloat("ScaleZ", &t.scale.z, 0.001f, 1.0f, "%.4f");
                 }
                 if (ImGui::Button("Apply Transform"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     render = true;
                     scene.buildBVH();
                 }
@@ -935,6 +1049,7 @@ int main(int argc, char* argv[])
                 ImGui::Spacing();
                 if (ImGui::Button("Apply Material"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     render = true;
                 }
                 ImGui::Spacing();
@@ -950,6 +1065,7 @@ int main(int argc, char* argv[])
                 {
                     if (ImGui::Button(preset.name.c_str()))
                     {
+                        std::lock_guard lock(sceneMutex);
                         mat.colourMap = Texture::loadTexture(preset.colourPath);
                         mat.roughnessMap = Texture::loadTexture(preset.roughnessPath);
                         mat.normalMap = Texture::loadTexture(preset.normalPath);
@@ -962,6 +1078,7 @@ int main(int argc, char* argv[])
                 ImGui::Spacing();
                 ImGui::Spacing();
                 if (ImGui::Button("Remove Texture")) {
+                    std::lock_guard lock(sceneMutex);
                     mat.colourMap = nullptr;
                     mat.roughnessMap = nullptr;
                     mat.metallicMap = nullptr;
@@ -997,6 +1114,7 @@ int main(int argc, char* argv[])
                     ImGui::SliderFloat("Emissive Map Intensity",&mat.emissiveMapIntensity,0.0f, 1.0f, "%.2f");
                 }
                 if (ImGui::Button("Apply Map Intensities")) {
+                    std::lock_guard lock(sceneMutex);
                     render = true;
                 }
                 ImGui::Spacing();
@@ -1006,6 +1124,7 @@ int main(int argc, char* argv[])
                 {
                     if (ImGui::Button("Delete Object", ImVec2(150, 30)))
                     {
+                        std::lock_guard lock(sceneMutex);
                         scene.removeEntity(selectedEntity);
                         scene.buildBVH();
                         selectedEntity = nullptr;
@@ -1068,6 +1187,7 @@ int main(int argc, char* argv[])
                 ImGui::Spacing();
                 if (ImGui::Button("Apply Light Properties"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     render = true;
                 }
                 ImGui::Spacing();
@@ -1075,6 +1195,7 @@ int main(int argc, char* argv[])
                 ImGui::Spacing();
                 if (ImGui::Button("Delete Light"))
                 {
+                    std::lock_guard lock(sceneMutex);
                     scene.removeLight(selectedLight);
                     scene.buildBVH();
                     selectedLight = nullptr;
@@ -1087,6 +1208,7 @@ int main(int argc, char* argv[])
         }
         if (cameraMode && state == RUNNING)
         {
+            std::lock_guard lock(sceneMutex);
             if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
             {
                 camera.moveZ(cameraSpeed);
@@ -1118,10 +1240,28 @@ int main(int argc, char* argv[])
                 render = true;
             }
         }
+        if (needsTextureUpdate && !isRendering) {
+            std::cout << "Updating texture, isRendering=" << isRendering << std::endl;
+            if (renderFuture.valid())
+            {
+                std::cout << "Waiting for render future..." << std::endl;
+                renderFuture.wait();
+                renderFuture.get();
+                std::cout << "Render future completed" << std::endl;
+            }
 
+            if (!cancelRender && !newPixels.empty())
+            {
+                glBindTexture(GL_TEXTURE_2D, texture);
+                glTexImage2D(GL_TEXTURE_2D,0,GL_RGB32F, newWidth, newHeight, 0, GL_RGB, GL_FLOAT, newPixels.data());
+                std::cout << "Texture updated" << std::endl;
+            }
+            needsTextureUpdate = false;
+        }
 
-        if (render)
+        if (render && !isRendering)
         {
+            std::cout << "Starting new render at resolution: " << currentWidth << "x" << currentHeight << std::endl;
             if (!showCustomRenderSettings)
             {
                 renderParams.primarySamples = currentQuality.pSamples;
@@ -1135,26 +1275,28 @@ int main(int argc, char* argv[])
                 g_camera->setAspect(static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
                                     currentWidth, currentHeight);
             }
-            pixels.resize(currentWidth * currentHeight);
 
+            newWidth = currentWidth;
+            newHeight = currentHeight;
+            newPixels.assign(newWidth * newHeight,glm::vec3(0.0f));
 
-            glBindTexture(GL_TEXTURE_2D, texture);
-            if (!cancelRender)
-            {
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, currentWidth, currentHeight,
-                             0, GL_RGB, GL_FLOAT, nullptr);
-            }
-
-            renderScene(scene, camera, renderParams, pixels, currentWidth, currentHeight);
-
-            if (!cancelRender)
-            {
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, currentWidth, currentHeight,
-                             0, GL_RGB, GL_FLOAT, pixels.data());
-            }
+            isRendering = true;
             render = false;
-        }
+            {
+                std::lock_guard lock(sceneMutex);
+                RenderParams paramsCopy = renderParams;
+                int renderWidth = newWidth;
+                int renderHeight = newHeight;
 
+                renderFuture = std::async(std::launch::async,
+                    [&scene,&camera,paramsCopy,renderWidth,renderHeight,&newPixels]()
+                {
+                        renderSceneAsync(scene,camera,paramsCopy,newPixels,renderWidth,renderHeight);
+                        isRendering = false;
+                });
+            }
+            needsTextureUpdate = true;
+        }
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
