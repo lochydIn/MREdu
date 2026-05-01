@@ -43,4 +43,3 @@ struct TexturePreset
     std::string metallicPath;
     std::string aoPath;
 };
-

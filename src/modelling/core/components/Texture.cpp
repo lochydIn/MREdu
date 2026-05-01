@@ -41,8 +41,8 @@ glm::vec3 Texture::sample(float u, float v) const
     u = glm::clamp(u, 0.0f, 1.0f);
     v = glm::clamp(v, 0.0f, 1.0f);
 
-    int x = int(u * width);
-    int y = int(v * height);
+    int x = static_cast<int>(u * width);
+    int y = static_cast<int>(v * height);
 
     // Clamp to valid range
     x = glm::min(x, width - 1);

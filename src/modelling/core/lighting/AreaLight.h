@@ -6,8 +6,7 @@
 #include "Light.h"
 #include "LightSample.h"
 #include "../Entity.h"
-#include "../../../rendering/structs/Ray.h"
-#include "../../../rendering/structs/Intersection.h"
+
 
 class AreaLight : public Light, public Entity
 {

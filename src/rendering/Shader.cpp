@@ -19,8 +19,8 @@ float Shader::distributionGGX(const float nDotH, const float hDotT, const float 
     float ax2 = ax * ax;
     float ay2 = ay * ay;
 
-    ax2 = glm::max(ax2,0.000001f);
-    ay2 = glm::max(ay2,0.000001f);
+    ax2 = glm::max(ax2, 0.000001f);
+    ay2 = glm::max(ay2, 0.000001f);
 
     const float surfaceAlignment = (hDotT * hDotT) / ax2 + (hDotB * hDotB) / ay2 + nDotH * nDotH;
     return 1.0f / (glm::pi<float>() * ax * ay * surfaceAlignment * surfaceAlignment);
@@ -45,7 +45,8 @@ float Shader::geometryShading(float const nDotL, const float nDotV, const float 
     return G;
 }
 
-glm::vec3 Shader::fresnelSchlick(const glm::vec3& surfaceColour, const float metallic, const float reflective, const float nDotV)
+glm::vec3 Shader::fresnelSchlick(const glm::vec3& surfaceColour, const float metallic, const float reflective,
+                                 const float nDotV)
 {
     const glm::vec3 F0 = glm::mix(glm::vec3(reflective), surfaceColour, metallic);
     // Fresnel Function.
@@ -53,13 +54,14 @@ glm::vec3 Shader::fresnelSchlick(const glm::vec3& surfaceColour, const float met
     return F;
 }
 
-glm::vec3 Shader::bRDF(const glm::vec3 surfaceColour, const float roughness, const float metallic, const float reflective,
+glm::vec3 Shader::bRDF(const glm::vec3 surfaceColour, const float roughness, const float metallic,
+                       const float reflective,
                        const float clearcoat, const float clearcoatRoughness, const float sheen,
                        const glm::vec3 sheenColour,
                        const float anisotropy, const float anisotropyRotation, const glm::vec3 T, const glm::vec3 B,
                        const glm::vec3& N, const glm::vec3& V, const glm::vec3& L)
 {
-    float r = glm::max(roughness,0.001f);
+    float r = glm::max(roughness, 0.001f);
     const glm::vec3 H = glm::normalize(V + L);
     const float nDotV = glm::max(glm::dot(N, V), 0.0001f);
     const float nDotL = glm::max(glm::dot(N, L), 0.0001f);
@@ -111,7 +113,7 @@ glm::vec3 Shader::bRDF(const glm::vec3 surfaceColour, const float roughness, con
 
     if (clearcoat > 0.0f)
     {
-        float dCC = distributionGGXIsotropic(nDotH, glm::max(clearcoatRoughness,0.001f));
+        float dCC = distributionGGXIsotropic(nDotH, glm::max(clearcoatRoughness, 0.001f));
         float gCC = geometryShading(nDotL, nDotV, clearcoatRoughness);
         glm::vec3 fCC = fresnelSchlick(glm::vec3(0.04f), 0.0f, 0.04, nDotV);
         glm::vec3 specularCC = (dCC * gCC * fCC) / (4.0f * nDotV * nDotL);

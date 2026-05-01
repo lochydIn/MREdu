@@ -5,7 +5,7 @@
 #pragma once
 #include <string>
 #include <memory>
-#include "glm/vec3.hpp"
+
 class Mesh;
 class Material;
 

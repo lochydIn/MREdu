@@ -41,13 +41,13 @@ struct BoundingBox
     bool intersect(const Ray& ray, float& tMin, float& tMax) const
     {
         // Reciprocal Direction
-        glm::vec3 invDir = 1.0f / ray.direction;
+        const glm::vec3 invDir = 1.0f / ray.direction;
 
-        glm::vec3 t1 = (min - ray.origin) * invDir; //Time to hit near plane (x,y,z)
-        glm::vec3 t2 = (max - ray.origin) * invDir; // Time to hit far plane. (x,y,z)
+        const glm::vec3 t1 = (min - ray.origin) * invDir; //Time to hit near plane (x,y,z)
+        const glm::vec3 t2 = (max - ray.origin) * invDir; // Time to hit far plane. (x,y,z)
 
-        glm::vec3 tNear = glm::min(t1, t2); // (which x y z is the entry point)
-        glm::vec3 tFar = glm::max(t1, t2); // exit Point
+        const glm::vec3 tNear = glm::min(t1, t2); // (which x y z is the entry point)
+        const glm::vec3 tFar = glm::max(t1, t2); // exit Point
 
         tMin = glm::max(glm::max(tNear.x, tNear.y), tNear.z); // Which is the last entry, x  y or z.
         tMax = glm::min(glm::min(tFar.x, tFar.y), tFar.z); // Which is the first exit, x y or z.
@@ -59,7 +59,7 @@ struct BoundingBox
     // Which is the boxes longest dimension ? - for splitting.
     [[nodiscard]] int maxDimension() const
     {
-        glm::vec3 extent = max - min;
+        const glm::vec3 extent = max - min;
         if (extent.x > extent.y && extent.x > extent.z) { return 0; }
         if (extent.y > extent.x) { return 1; }
         return 2;

@@ -50,7 +50,7 @@ struct QualityPreset
 
 constexpr QualityPreset INTERACTIVE = {1, 1, 1, 3};
 constexpr QualityPreset PREVIEW = {4, 8, 4, 4};
-constexpr QualityPreset PRODUCTION = {8, 64, 12, 8};
+constexpr QualityPreset PRODUCTION = {8, 64, 12, 6};
 
 int currentWidth = INTERACTIVE_WIDTH;
 int currentHeight = INTERACTIVE_HEIGHT;
@@ -189,7 +189,6 @@ void renderScene(const Scene& scene, const Camera& camera, const RenderParams& r
             glfwPollEvents();
             if (cancelRender)
             {
-                std::cout << "Render cancelled." << std::endl;
                 outProgress = 0.0f;
                 outTimeTaken = 0.0f;
                 return;
@@ -1241,27 +1240,26 @@ int main(int argc, char* argv[])
             }
         }
         if (needsTextureUpdate && !isRendering) {
-            std::cout << "Updating texture, isRendering=" << isRendering << std::endl;
+
             if (renderFuture.valid())
             {
-                std::cout << "Waiting for render future..." << std::endl;
                 renderFuture.wait();
                 renderFuture.get();
-                std::cout << "Render future completed" << std::endl;
+
             }
 
             if (!cancelRender && !newPixels.empty())
             {
                 glBindTexture(GL_TEXTURE_2D, texture);
                 glTexImage2D(GL_TEXTURE_2D,0,GL_RGB32F, newWidth, newHeight, 0, GL_RGB, GL_FLOAT, newPixels.data());
-                std::cout << "Texture updated" << std::endl;
+
             }
             needsTextureUpdate = false;
         }
 
         if (render && !isRendering)
         {
-            std::cout << "Starting new render at resolution: " << currentWidth << "x" << currentHeight << std::endl;
+
             if (!showCustomRenderSettings)
             {
                 renderParams.primarySamples = currentQuality.pSamples;

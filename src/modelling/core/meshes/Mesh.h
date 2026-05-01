@@ -47,8 +47,7 @@ public:
             objectIntersectionToWorldSpace(hit);
             return true;
         }
-       return false;
-
+        return false;
     }
 
     [[nodiscard]] BoundingBox getBoundingBox() const override

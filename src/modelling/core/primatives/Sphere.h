@@ -6,7 +6,6 @@
 #include "../Entity.h"
 #include "../components/Transform.h"
 #include "../components/Material.h"
-#include <iostream>
 
 class Sphere : public Entity
 {
@@ -37,7 +36,7 @@ public:
             // Calculate the points of intersection.
             float t1 = (-b - std::sqrt(discriminant)) / (2 * a);
             float t2 = (-b + std::sqrt(discriminant)) / (2 * a);
-            float t  = INFINITY;
+            float t = INFINITY;
 
             if (t1 > tMin)
             {

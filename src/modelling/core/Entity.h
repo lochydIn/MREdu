@@ -10,13 +10,12 @@
 #include "../../rendering/structs/Ray.h"
 #include "components/Transform.h"
 #include "glm/gtx/associated_min_max.hpp"
-#include <iostream>
 
 struct Intersection;
+
 class Entity
 {
 public:
-
     Entity() = default;
 
     Entity(std::shared_ptr<Material> material) : material(std::move(material))

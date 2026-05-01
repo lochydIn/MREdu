@@ -14,5 +14,4 @@ public:
     virtual void setColour(glm::vec3 colour) = 0;
     [[nodiscard]] virtual float getIntensity() = 0;
     virtual void setIntensity(float intensity) = 0;
-
 };

@@ -8,7 +8,6 @@
 class Camera
 {
 public:
-    // Constructor - Being passed the position of the camera and its target view point.
     explicit Camera(const glm::vec3& position = glm::vec3(0.0f, 0.0f, 5.0f),
                     const glm::vec3& target = glm::vec3(0.0f, 0.0f, 0.0f),
                     const float fov = 60.0f,
@@ -127,7 +126,6 @@ public:
         glm::mat4 pitchMatrix = glm::rotate(glm::mat4(1.0f), pitch, right);
         direction = glm::vec3(pitchMatrix * glm::vec4(direction, 0.0f));
         target = position + direction;
-        std::cout << "New target: (" << target.x << ", " << target.y << ", " << target.z << ")" << std::endl;
     }
 
 private:

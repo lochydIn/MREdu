@@ -59,17 +59,22 @@ public:
                 const glm::vec3 local = hit.point - position;
                 glm::vec3 absNormal = glm::abs(normal);
                 constexpr float tileSize = 10.0f;
-                if (absNormal.y > 0.9f) {
+                if (absNormal.y > 0.9f)
+                {
                     hit.uv.x = glm::fract(local.x / tileSize + 0.5f);
                     hit.uv.y = glm::fract(local.z / tileSize + 0.5f);
                     hit.tangent = glm::vec3(1, 0, 0);
                     hit.bitangent = glm::vec3(0, 0, 1);
-                } else if (absNormal.x > 0.9f) {
+                }
+                else if (absNormal.x > 0.9f)
+                {
                     hit.uv.x = glm::fract(local.y / tileSize + 0.5f);
                     hit.uv.y = glm::fract(local.z / tileSize + 0.5f);
                     hit.tangent = glm::vec3(0, 1, 0);
                     hit.bitangent = glm::vec3(0, 0, 1);
-                } else {
+                }
+                else
+                {
                     hit.uv.x = glm::fract(local.x / tileSize + 0.5f);
                     hit.uv.y = glm::fract(local.y / tileSize + 0.5f);
                     hit.tangent = glm::vec3(1, 0, 0);
