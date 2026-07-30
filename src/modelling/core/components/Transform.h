@@ -4,8 +4,8 @@
 
 #pragma once
 #include <glm/gtc/matrix_transform.hpp>
-#include "../../../cmake-build-debug/_deps/glm-src/glm/vec3.hpp"
-#include "../../../cmake-build-debug/_deps/glm-src/glm/gtx/matrix_transform_2d.hpp"
+#include <glm/vec3.hpp>
+#include <glm/gtx/matrix_transform_2d.hpp>
 
 struct Transform
 {

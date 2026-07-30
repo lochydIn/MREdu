@@ -13,7 +13,7 @@
 #include <mutex>
 
 #include "imgui_internal.h"
-#include "../cmake-build-debug/_deps/glfw-src/include/GLFW/glfw3.h"
+#include <GLFW/glfw3.h>
 #include "modelling/core/Scene.h"
 #include "modelling/core/Camera.h"
 #include "modelling/core/meshes/Mesh.h"
@@ -138,7 +138,7 @@ void mouse_callback(GLFWwindow* window, const double xPos, const double yPos)
 
 // Simple fragment shader - just shows the texture
 auto fragmentShaderSource = R"(
-#version 460 core
+#version 450 core
 in vec2 TexCoord;                      // Input: texture coord from vertex shader
 out vec4 FragColor;                     // Output: final color
 uniform sampler2D screenTexture;        // The texture containing our ray traced image
@@ -149,7 +149,7 @@ void main() {
 
 // Simple vertex shader - just draws a fullscreen rectangle
 auto vertexShaderSource = R"(
-#version 460 core
+#version 450 core
 layout(location = 0) in vec2 aPos;  // Input: vertex position
 out vec2 TexCoord;                   // Output: texture coordinate
 void main() {
@@ -263,13 +263,24 @@ void renderSceneAsync(const Scene& scene, const Camera& camera, const RenderPara
 int main(int argc, char* argv[])
 {
     // Setting up a simple viewport to test primitives and components.
-    glfwInit();
+    if (!glfwInit()) {
+    const char* desc;
+    glfwGetError(&desc);
+    std::cout << "GLFW init failed: " << desc << std::endl;
+    return -1;
+}
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 
     GLFWwindow* window = glfwCreateWindow(PRODUCTION_WIDTH, PRODUCTION_HEIGHT,
                                           "Viewport", nullptr, nullptr);
+    if (!window) {
+    const char* desc;
+    glfwGetError(&desc);
+    std::cout << "GLFW window creation failed: " << desc << std::endl;
+    glfwTerminate();
+    return -1;
+    }
 
     if (window == nullptr)
     {
@@ -283,7 +294,7 @@ int main(int argc, char* argv[])
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 460");
+    ImGui_ImplOpenGL3_Init("#version 450");
     glfwSetKeyCallback(window, key_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
