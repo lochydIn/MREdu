@@ -996,7 +996,7 @@ int main(int argc, char* argv[])
 
             if (selectedEntity)
             {
-                ImGui::SetNextWindowPos(ImVec2(1100, 10));
+                ImGui::SetNextWindowPos(ImVec2(1000, 10));
                 ImGui::Begin("Entity Properties", nullptr);
                 Transform& t = selectedEntity->editTransform();
                 Material& mat = selectedEntity->editMaterial();
@@ -1009,9 +1009,9 @@ int main(int argc, char* argv[])
                 {
                     glm::vec3 pNormal = p->getNormal();
                     glm::vec3 pPos = p->getPosition();
-                    ImGui::InputFloat("X", &pPos.x, 0.1f, 1.0f,"%.1f");
-                    ImGui::InputFloat("Y", &pPos.y, 0.1f, 1.0f,"%.1f");
-                    ImGui::InputFloat("Z", &pPos.z, 0.1f, 1.0f,"%.1f");
+                    ImGui::InputFloat("X", &pPos.x, 0.1f, 1.0f,"%.2f");
+                    ImGui::InputFloat("Y", &pPos.y, 0.1f, 1.0f,"%.2f");
+                    ImGui::InputFloat("Z", &pPos.z, 0.1f, 1.0f,"%.2f");
                     ImGui::DragFloat3("Normal", &pNormal.x, 0.1f, -1.0f, 1.0f, "%.1f");
                     p->setPosition(pPos);
                     p->setNormal(pNormal);
